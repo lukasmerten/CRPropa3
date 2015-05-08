@@ -262,6 +262,7 @@ add_library(crpropa SHARED
 	src/module/PhotonDINT1D.cpp
 	src/module/PhotonEleCa.cpp
 	src/module/Tools.cpp
+	src/module/DiffusionModule.cpp
 	src/magneticField/MagneticField.cpp
 	src/magneticField/MagneticFieldGrid.cpp
 	src/magneticField/TurbulentMagneticField.cpp

@@ -1,4 +1,4 @@
-#include <crpropa/module/DiffusionModule.h>
+#include "crpropa/module/DiffusionModule.h"
 
 #include <crpropa/Random.h>
 
@@ -17,7 +17,7 @@ DiffusionModule::DiffusionModule(ref_ptr<MagneticField> field) :
 void DiffusionModule::process(Candidate *candidate) const {
 	double rig = candidate->current.getEnergy() / candidate->current.getCharge();
 	double DifCoeff = 6.1e24*pow((rig/4.0e9), 1./3.);
-	double stepSize = 2./c_light*DifCoeff; //easier to handle by now
+	double stepSize = 2. / c_light * DifCoeff; 
 
 
     double step = stepSize;

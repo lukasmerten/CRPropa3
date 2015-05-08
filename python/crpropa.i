@@ -46,6 +46,7 @@ using std::ptrdiff_t;
 #include "crpropa/module/SimplePropagation.h"
 #include "crpropa/module/PropagationCK.h"
 #include "crpropa/module/Tools.h"
+#include "crpropa/module/DiffusionModule.h"
 
 #include "crpropa/magneticField/MagneticField.h"
 #include "crpropa/magneticField/MagneticFieldGrid.h"
@@ -171,6 +172,7 @@ using std::ptrdiff_t;
 %include "crpropa/module/PhotoDisintegration.h"
 %include "crpropa/module/Redshift.h"
 %include "crpropa/module/Tools.h"
+%include "crpropa/module/DiffusionModule.h"
 
 %template(SourceInterfaceRefPtr) crpropa::ref_ptr<crpropa::SourceInterface>;
 %feature("director") crpropa::SourceInterface;

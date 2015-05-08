@@ -5,6 +5,7 @@
 
 #include <crpropa/Module.h>
 #include <crpropa/magneticField/MagneticField.h>
+#include <crpropa/Units.h>
 
 class DiffusionModule : public crpropa::Module{
 	private:
