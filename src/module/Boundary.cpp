@@ -252,4 +252,53 @@ std::string EllipsoidalBoundary::getDescription() const {
 	return s.str();
 }
 
+CylindricalBoundary::CylindricalBoundary() :
+  origin(Vector3d(0,0,0)), height(0), radius(0), flag("OutOfBounds"), flagValue(""), limitStep(false), margin(0) {
+}
+
+CylindricalBoundary::CylindricalBoundary(Vector3d o, double h, double r) :
+  origin(o), height(h), radius(r),  flag("OutOfBounds"), flagValue(""), limitStep(false) , margin(0){
+}
+
+void CylindricalBoundary::process(Candidate *c) const {
+	Vector3d cR = c->current.getPosition() - origin;
+	if (pow(cR.x, 2.)+pow(cR.y, 2.) > pow(radius, 2.)){
+	  c->setActive(false);
+	  c->setProperty(flag, flagValue);
+	}
+	if (pow(pow(cR.z, 2.), .5) > height/2.){
+	  c->setActive(false);
+	  c->setProperty(flag, flagValue);
+	}
+}
+
+void CylindricalBoundary::setOrigin(Vector3d o) {
+	origin = o;
+}
+void CylindricalBoundary::setHeight(double h) {
+	height = h;
+}
+void CylindricalBoundary::setRadius(double r) {
+	radius = r;
+}
+void CylindricalBoundary::setLimitStep(bool b) {
+	limitStep = b;
+}
+void CylindricalBoundary::setMargin(double m) {
+        margin = m;
+}
+void CylindricalBoundary::setFlag(std::string f, std::string v) {
+	flag = f;
+	flagValue = v;
+}
+
+std::string CylindricalBoundary::getDescription() const {
+	std::stringstream s;
+	s << "Cylindrical Boundary: origin = " << origin / kpc << " kpc, ";
+	s << "radius = " << radius / kpc << " kpc, ";
+	s << "height" << height / kpc << " kpc; ";
+	s << " Flag: " << flag << " -> " << flagValue;
+	return s.str();
+}
+
 } // namespace crpropa
