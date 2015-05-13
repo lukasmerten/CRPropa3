@@ -325,6 +325,16 @@ void SourceUniformCylinder::prepareParticle(ParticleState& particle) const {
   Vector3d pos(cos(phi)*RandRadius, sin(phi)*RandRadius, (-0.5+random.rand())*height);
   particle.setPosition(pos + origin);
   }
+
+void SourceUniformCylinder::setDescription() {
+	std::stringstream ss;
+	ss << "SourceUniformCylinder: Random uniform position in cylinder with ";
+	ss << "origin = " << origin / Mpc << " Mpc and ";
+	ss << "radius = " << radius / Mpc << " Mpc and";
+	ss << "height = " << height / Mpc << " Mpc\n";
+	description = ss.str();
+}
+
 //LM_RUB{End} Add new source class
 
 // ----------------------------------------------------------------------------

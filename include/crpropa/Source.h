@@ -223,6 +223,7 @@ public:
 */
 	SourceUniformCylinder(Vector3d origin, double height, double radius);
 	void prepareParticle(ParticleState &particle) const;
+	void setDescription();
 };
 //LM_RUB{End} Add new source class 
 
