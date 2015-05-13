@@ -279,22 +279,20 @@ std::string EllipsoidalBoundary::getDescription() const {
 }
 
 CylindricalBoundary::CylindricalBoundary() :
-  origin(Vector3d(0,0,0)), height(0), radius(0), flag("OutOfBounds"), flagValue(""), limitStep(false), margin(0) {
+  origin(Vector3d(0,0,0)), height(0), radius(0), limitStep(false), margin(0) {
 }
 
 CylindricalBoundary::CylindricalBoundary(Vector3d o, double h, double r) :
-  origin(o), height(h), radius(r),  flag("OutOfBounds"), flagValue(""), limitStep(false) , margin(0){
+  origin(o), height(h), radius(r), limitStep(false) , margin(0){
 }
 
 void CylindricalBoundary::process(Candidate *c) const {
 	Vector3d cR = c->current.getPosition() - origin;
 	if (pow(cR.x, 2.)+pow(cR.y, 2.) > pow(radius, 2.)){
-	  c->setActive(false);
-	  c->setProperty(flag, flagValue);
+	  processOutOfBounds(c);
 	}
 	if (pow(pow(cR.z, 2.), .5) > height/2.){
-	  c->setActive(false);
-	  c->setProperty(flag, flagValue);
+	  processOutOfBounds(c);
 	}
 }
 
@@ -313,17 +311,17 @@ void CylindricalBoundary::setLimitStep(bool b) {
 void CylindricalBoundary::setMargin(double m) {
         margin = m;
 }
-void CylindricalBoundary::setFlag(std::string f, std::string v) {
-	flag = f;
-	flagValue = v;
-}
+
 
 std::string CylindricalBoundary::getDescription() const {
 	std::stringstream s;
 	s << "Cylindrical Boundary: origin = " << origin / kpc << " kpc, ";
 	s << "radius = " << radius / kpc << " kpc, ";
 	s << "height" << height / kpc << " kpc; ";
-	s << " Flag: " << flag << " -> " << flagValue;
+	s << "Flag: '" << flagKey << "' -> '" << flagValue << "', ";
+	s << "MakeInactive: " << makeInactive ? "yes" : "no";
+	if (outOfBoundsAction.valid())
+		s << ", Action: " << outOfBoundsAction->getDescription();
 	return s.str();
 }
 

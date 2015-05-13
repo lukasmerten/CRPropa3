@@ -160,14 +160,12 @@ public:
  The particle is made inactive and by default is flagged "OutOfBounds".
  Optionally the module can ensure the candidate does not overshoot the boundary by more than a set margin.
  */
-class CylindricalBoundary: public Module {
+class CylindricalBoundary: public AbstractBoundary {
 private:
 	Vector3d origin;
 	double height;
 	double radius;
 	double margin;
-	std::string flag;
-	std::string flagValue;
 	bool limitStep;
 
 public:
@@ -180,7 +178,6 @@ public:
 	void setRadius(double radius);
 	void setMargin(double margin);
 	void setLimitStep(bool limitStep);
-	void setFlag(std::string flag, std::string flagValue);
 	std::string getDescription() const;
 };
 
