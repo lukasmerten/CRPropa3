@@ -5,7 +5,7 @@
 
 namespace crpropa {
 
-TrajectoryOutput::TrajectoryOutput(std::string name) {
+  TrajectoryOutput::TrajectoryOutput(std::string name): scale(Mpc) {
 	setDescription("Trajectory output");
 	fout.open(name.c_str());
 	fout << "# D\tID\tE\tX\tY\tZ\tPx\tPy\tPz\n"
@@ -18,6 +18,19 @@ TrajectoryOutput::TrajectoryOutput(std::string name) {
 	     << "#\n";
 }
 
+  TrajectoryOutput::TrajectoryOutput(std::string name, double s): scale(s) {
+	setDescription("Trajectory output");
+	fout.open(name.c_str());
+	fout << "# D\tID\tE\tX\tY\tZ\tPx\tPy\tPz\n"
+	     << "#\n"
+	     << "# D           Trajectory length\n"
+	     << "# ID          Particle type (PDG MC numbering scheme)\n"
+	     << "# E           Energy [EeV]\n"
+	     << "# X, Y, Z     Position ["<< scale/kpc <<"*kpc]\n"
+	     << "# Px, Py, Pz  Heading (unit vector of momentum)\n"
+	     << "#\n";
+}
+ 
 TrajectoryOutput::~TrajectoryOutput() {
 	fout.close();
 }
@@ -26,10 +39,10 @@ void TrajectoryOutput::process(Candidate *c) const {
 	char buffer[1024];
 	size_t p = 0;
 
-	p += sprintf(buffer + p, "%8.3f\t", c->getTrajectoryLength() / Mpc);
+	p += sprintf(buffer + p, "%8.3f\t", c->getTrajectoryLength() / scale);
 	p += sprintf(buffer + p, "%10i\t", c->current.getId());
 	p += sprintf(buffer + p, "%8.4f\t", c->current.getEnergy() / EeV);
-	Vector3d pos = c->current.getPosition() / Mpc;
+	Vector3d pos = c->current.getPosition() / scale;
 	p += sprintf(buffer + p, "%8.4f\t%8.4f\t%8.4f\t", pos.x, pos.y, pos.z);
 	const Vector3d &dir = c->current.getDirection();
 	p += sprintf(buffer + p, "%8.5f\t%8.5f\t%8.5f\n", dir.x, dir.y, dir.z);
@@ -43,7 +56,7 @@ void TrajectoryOutput::endRun() {
 }
 
 ConditionalOutput::ConditionalOutput(std::string fname, std::string cond) :
-		condition(cond) {
+  condition(cond), scale(Mpc) {
 	setDescription(
 			"Conditional output, condition: " + cond + ", filename: " + fname);
 	fout.open(fname.c_str());
@@ -59,6 +72,23 @@ ConditionalOutput::ConditionalOutput(std::string fname, std::string cond) :
 	     << "#\n";
 }
 
+  ConditionalOutput::ConditionalOutput(std::string fname, double scale, std::string cond) :
+    condition(cond), scale(scale) {
+	setDescription(
+			"Conditional output, condition: " + cond + ", filename: " + fname);
+	fout.open(fname.c_str());
+	fout << "# D\tID\tID0\tE\tE0\tX\tY\tZ\tX0\tY0\tZ0\tPx\tPy\tPz\tP0x\tP0y\tP0z\tz\n"
+	     << "#\n"
+	     << "# D           Trajectory length ["<< scale/kpc <<"*kpc]\n"
+	     << "# ID          Particle type (PDG MC numbering scheme)\n"
+	     << "# E           Energy [EeV]\n"
+	     << "# X, Y, Z     Position ["<< scale/kpc <<"*kpc]\n"
+	     << "# Px, Py, Pz  Heading (unit vector of momentum)\n"
+	     << "# z           Current redshift\n"
+	     << "# Initial state: ID0, E0, ...\n"
+	     << "#\n";
+}
+  
 ConditionalOutput::~ConditionalOutput() {
 	fout.close();
 }
@@ -72,14 +102,14 @@ void ConditionalOutput::process(Candidate *c) const {
 	char buffer[1024];
 	size_t p = 0;
 
-	p += sprintf(buffer + p, "%8.3f\t", c->getTrajectoryLength() / Mpc);
+	p += sprintf(buffer + p, "%8.3f\t", c->getTrajectoryLength() / scale);
 	p += sprintf(buffer + p, "%10i\t", c->current.getId());
 	p += sprintf(buffer + p, "%10i\t", c->source.getId());
 	p += sprintf(buffer + p, "%8.4f\t", c->current.getEnergy() / EeV);
 	p += sprintf(buffer + p, "%8.4f\t", c->source.getEnergy() / EeV);
-	Vector3d pos = c->current.getPosition() / Mpc;
+	Vector3d pos = c->current.getPosition() / scale;
 	p += sprintf(buffer + p, "%9.4f\t%9.4f\t%9.4f\t", pos.x, pos.y, pos.z);
-	Vector3d ipos = c->source.getPosition() / Mpc;
+	Vector3d ipos = c->source.getPosition() / scale;
 	p += sprintf(buffer + p, "%9.4f\t%9.4f\t%9.4f\t", ipos.x, ipos.y, ipos.z);
 	Vector3d dir = c->current.getDirection();
 	p += sprintf(buffer + p, "%8.5f\t%8.5f\t%8.5f\t", dir.x, dir.y, dir.z);
@@ -95,7 +125,7 @@ void ConditionalOutput::endRun() {
 	fout.flush();
 }
 
-TrajectoryOutput1D::TrajectoryOutput1D(std::string filename) {
+  TrajectoryOutput1D::TrajectoryOutput1D(std::string filename) : scale(Mpc) {
 	setDescription("TrajectoryOutput, filename: " + filename);
 	fout.open(filename.c_str());
 	fout << "#X\tID\tE\n"
@@ -105,6 +135,16 @@ TrajectoryOutput1D::TrajectoryOutput1D(std::string filename) {
 	     << "# E  Energy [EeV]\n";
 }
 
+  TrajectoryOutput1D::TrajectoryOutput1D(std::string filename, double s) : scale(s) {
+	setDescription("TrajectoryOutput, filename: " + filename);
+	fout.open(filename.c_str());
+	fout << "#X\tID\tE\n"
+	     << "#\n"
+	     << "# X  Position [" << scale/kpc <<"*kpc]\n"
+	     << "# ID Particle type\n"
+	     << "# E  Energy [EeV]\n";
+}
+  
 TrajectoryOutput1D::~TrajectoryOutput1D() {
 	fout.close();
 }
@@ -112,7 +152,7 @@ TrajectoryOutput1D::~TrajectoryOutput1D() {
 void TrajectoryOutput1D::process(Candidate *c) const {
 	char buffer[1024];
 	size_t p = 0;
-	p += sprintf(buffer + p, "%8.4f\t", c->current.getPosition().x / Mpc);
+	p += sprintf(buffer + p, "%8.4f\t", c->current.getPosition().x / scale);
 	p += sprintf(buffer + p, "%10i\t", c->current.getId());
 	p += sprintf(buffer + p, "%8.4f\n", c->current.getEnergy() / EeV);
 
@@ -124,7 +164,7 @@ void TrajectoryOutput1D::endRun() {
 	fout.flush();
 }
 
-EventOutput1D::EventOutput1D(std::string filename) {
+  EventOutput1D::EventOutput1D(std::string filename) : scale(Mpc) {
 	setDescription("Conditional output, filename: " + filename);
 	fout.open(filename.c_str());
 	fout << "#ID\tE\tD\tID0\tE0\n"
@@ -132,6 +172,18 @@ EventOutput1D::EventOutput1D(std::string filename) {
 	     << "# ID  Particle type\n"
 	     << "# E   Energy [EeV]\n"
 	     << "# D   Comoving source distance [Mpc]\n"
+	     << "# ID0 Initial particle type\n"
+	     << "# E0  Initial energy [EeV]\n";
+}
+
+  EventOutput1D::EventOutput1D(std::string filename, double s) : scale(s) {
+	setDescription("Conditional output, filename: " + filename);
+	fout.open(filename.c_str());
+	fout << "#ID\tE\tD\tID0\tE0\n"
+	     << "#\n"
+	     << "# ID  Particle type\n"
+	     << "# E   Energy [EeV]\n"
+	     << "# D   Comoving source distance ["<< scale/kpc <<"*kpc]\n"
 	     << "# ID0 Initial particle type\n"
 	     << "# E0  Initial energy [EeV]\n";
 }
@@ -146,7 +198,7 @@ void EventOutput1D::process(Candidate *c) const {
 
 	p += sprintf(buffer + p, "%10i\t", c->current.getId());
 	p += sprintf(buffer + p, "%8.4f\t", c->current.getEnergy() / EeV);
-	p += sprintf(buffer + p, "%9.4f\t", c->source.getPosition().x / Mpc);
+	p += sprintf(buffer + p, "%9.4f\t", c->source.getPosition().x / scale);
 	p += sprintf(buffer + p, "%10i\t", c->source.getId());
 	p += sprintf(buffer + p, "%8.4f\n", c->source.getEnergy() / EeV);
 

@@ -14,8 +14,10 @@ namespace crpropa {
  */
 class TrajectoryOutput: public Module {
 	mutable std::ofstream fout;
+	double scale;
 public:
 	TrajectoryOutput(std::string filename);
+	TrajectoryOutput(std::string filename, double scale);
 	~TrajectoryOutput();
 	void process(Candidate *candidate) const;
 	void endRun();
@@ -28,8 +30,10 @@ public:
 class ConditionalOutput: public Module {
 	mutable std::ofstream fout;
 	std::string condition;
+	double scale;
 public:
 	ConditionalOutput(std::string filename, std::string condition = "Detected");
+	ConditionalOutput(std::string filename, double scale, std::string condition = "Detected");
 	~ConditionalOutput();
 	void process(Candidate *candidate) const;
 	void endRun();
@@ -41,8 +45,10 @@ public:
  */
 class TrajectoryOutput1D: public Module {
 	mutable std::ofstream fout;
+	double scale;
 public:
 	TrajectoryOutput1D(std::string filename);
+	TrajectoryOutput1D(std::string filename, double scale);
 	~TrajectoryOutput1D();
 	void process(Candidate *candidate) const;
 	void endRun();
@@ -54,8 +60,10 @@ public:
  */
 class EventOutput1D: public Module {
 	mutable std::ofstream fout;
+	double scale;
 public:
 	EventOutput1D(std::string filename);
+	EventOutput1D(std::string filename, double scale);
 	~EventOutput1D();
 	void process(Candidate *candidate) const;
 	void endRun();
