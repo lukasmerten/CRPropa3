@@ -287,13 +287,16 @@ CylindricalBoundary::CylindricalBoundary(Vector3d o, double h, double r) :
 }
 
 void CylindricalBoundary::process(Candidate *c) const {
-	Vector3d cR = c->current.getPosition() - origin;
-	if (pow(cR.x, 2.)+pow(cR.y, 2.) > pow(radius, 2.)){
-	  processOutOfBounds(c);
+	Vector3d d = c->current.getPosition() - origin;
+	double R2 = pow(d.x, 2.)+pow(d.y, 2.);
+	double Z = fabs(d.z);
+	if ( R2 < pow(radius, 2.) and Z < height/2.) {
+	  if(limitStep) {
+	    c->limitNextStep(std::min(radius - pow(R2, 0.5), height/2. - Z) + margin);
+	  }
+	  return;
 	}
-	if (pow(pow(cR.z, 2.), .5) > height/2.){
-	  processOutOfBounds(c);
-	}
+	processOutOfBounds(c);
 }
 
 void CylindricalBoundary::setOrigin(Vector3d o) {
