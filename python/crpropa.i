@@ -222,8 +222,7 @@ ObserverRedshiftWindow.__repr__ = ObserverRedshiftWindow.getDescription
 ObserverNucleusVeto.__repr__ = ObserverNucleusVeto.getDescription
 ObserverNeutrinoVeto.__repr__ = ObserverNeutrinoVeto.getDescription
 ObserverPhotonVeto.__repr__ = ObserverPhotonVeto.getDescription
-ObserverOutput1D.__repr__ = ObserverOutput1D.getDescription
-ObserverOutput3D.__repr__ = ObserverOutput3D.getDescription
+
 
 def Vector3__repr__(self):
     return "Vector(%.3g, %.3g, %.3g)" % (self.x, self.y, self.z)

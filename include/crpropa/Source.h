@@ -205,6 +205,28 @@ public:
 	void setDescription();
 };
 
+//LM_RUB{Begin} Add new source class 
+/**
+ @class SourceUniformCylinder
+ @brief Uniform random source positions inside a Cylinder
+ */
+
+class SourceUniformCylinder: public SourceFeature {
+	Vector3d origin;
+	double height;
+	double radius;
+public:
+	/** Constructor
+	 @param origin	lower middle of cylinder
+	 @param height	height of the cylinder
+	 @param radius	radius of the cylinder
+*/
+	SourceUniformCylinder(Vector3d origin, double height, double radius);
+	void prepareParticle(ParticleState &particle) const;
+	void setDescription();
+};
+//LM_RUB{End} Add new source class 
+
 /**
  @class SourceUniform1D
  @brief 1D-Positions from a uniform source distribution in an expanding universe
