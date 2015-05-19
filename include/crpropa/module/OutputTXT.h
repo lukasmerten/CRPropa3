@@ -13,14 +13,15 @@ namespace crpropa {
  @brief Saves trajectories to plain text file.
  */
 class TrajectoryOutput: public Module {
-	mutable std::ofstream fout;
-	double scale;
+    mutable std::ofstream fout;
+    double SpatialScale;
+    double EnergyScale;
 public:
-	TrajectoryOutput(std::string filename);
-	TrajectoryOutput(std::string filename, double scale);
-	~TrajectoryOutput();
-	void process(Candidate *candidate) const;
-	void endRun();
+    TrajectoryOutput(std::string filename);
+    TrajectoryOutput(std::string filename, double SpatialScale, double EnergyScale);
+    ~TrajectoryOutput();
+    void process(Candidate *candidate) const;
+    void endRun();
 };
 
 /**
@@ -28,15 +29,16 @@ public:
  @brief Saves particles with a given property to a plain text file.
  */
 class ConditionalOutput: public Module {
-	mutable std::ofstream fout;
-	std::string condition;
-	double scale;
+    mutable std::ofstream fout;
+    std::string condition;
+    double SpatialScale;
+    double EnergyScale;
 public:
-	ConditionalOutput(std::string filename, std::string condition = "Detected");
-	ConditionalOutput(std::string filename, double scale, std::string condition = "Detected");
-	~ConditionalOutput();
-	void process(Candidate *candidate) const;
-	void endRun();
+    ConditionalOutput(std::string filename, std::string condition = "Detected");
+    ConditionalOutput(std::string filename, double SpatialScale, double EnergyScale, std::string condition = "Detected");
+    ~ConditionalOutput();
+    void process(Candidate *candidate) const;
+    void endRun();
 };
 
 /**
@@ -44,14 +46,15 @@ public:
  @brief Saves 1D trajectories to plain text file.
  */
 class TrajectoryOutput1D: public Module {
-	mutable std::ofstream fout;
-	double scale;
+    mutable std::ofstream fout;
+    double SpatialScale;
+    double EnergyScale;
 public:
-	TrajectoryOutput1D(std::string filename);
-	TrajectoryOutput1D(std::string filename, double scale);
-	~TrajectoryOutput1D();
-	void process(Candidate *candidate) const;
-	void endRun();
+    TrajectoryOutput1D(std::string filename);
+    TrajectoryOutput1D(std::string filename, double SpatialScale, double EnergyScale);
+    ~TrajectoryOutput1D();
+    void process(Candidate *candidate) const;
+    void endRun();
 };
 
 /**
@@ -59,14 +62,15 @@ public:
  @brief Records particles that are inactive and have the property 'Detected' to a plain text file.
  */
 class EventOutput1D: public Module {
-	mutable std::ofstream fout;
-	double scale;
+    mutable std::ofstream fout;
+    double SpatialScale;
+    double EnergyScale;
 public:
-	EventOutput1D(std::string filename);
-	EventOutput1D(std::string filename, double scale);
-	~EventOutput1D();
-	void process(Candidate *candidate) const;
-	void endRun();
+    EventOutput1D(std::string filename);
+    EventOutput1D(std::string filename, double SpatialScale, double EnergyScale);
+    ~EventOutput1D();
+    void process(Candidate *candidate) const;
+    void endRun();
 };
 
 } // namespace crpropa
