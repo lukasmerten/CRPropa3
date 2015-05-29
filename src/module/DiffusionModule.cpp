@@ -9,18 +9,32 @@
 
 using namespace crpropa;
 	
-DiffusionModule::DiffusionModule(ref_ptr<MagneticField> field) :
-    field(field)
+DiffusionModule::DiffusionModule(ref_ptr<MagneticField> field, std::string m) :
+  field(field), mode(m)
 {
+  try {
+    InputCheck(mode);
+  }
+  catch (std::invalid_argument& e) {
+    std::cerr << "Error in DiffusionModule:" << std::endl;
+    std::terminate();
+  }
 }
 
 void DiffusionModule::process(Candidate *candidate) const {
 	double rig = candidate->current.getEnergy() / candidate->current.getCharge();
 	double DifCoeff = 6.1e24*pow((rig/4.0e9), 1./3.);
-	double stepSize = 2. / c_light * DifCoeff; 
+	double stepSize;
+	double step;
+	if(mode == singleString){
+	stepSize = 2. / c_light * DifCoeff;
+	step = stepSize;
+	}else if(mode == logString){
+	stepSize = 1. / c_light * DifCoeff; // log-step distribution
+	step = -1. * stepSize * log(1-Random::instance().rand()); // log-step distribution
+	}
+	
 
-
-    double step = stepSize;
     if (Random::instance().rand() < .5) {
         step *= -1;
     }
@@ -42,9 +56,36 @@ void DiffusionModule::process(Candidate *candidate) const {
     Vector3d k3 = step * field->getField(xi + k2/2.0).getUnitVector();
     Vector3d k4 = step * field->getField(xi + k3).getUnitVector();
     
-    // ToDo normalize
     Vector3d step3d = (k1 + 2.0*(k2+k3) + k4)/6.; 
-    /*
+
+	candidate->previous = candidate->current;
+	candidate->current.setPosition(xi + step3d);
+	candidate->setCurrentStep(stepSize);
+	candidate->setNextStep(stepSize);
+	candidate->current.setDirection(step3d);
+    }
+    }
+
+void DiffusionModule::InputCheck(std::string c) {
+      check = c;
+      singleString = "single";
+      logString = "log";
+      
+      if (c == "single"){
+	return;
+      }
+      if (c == "log"){
+	return;
+      }
+      else{
+	throw std::invalid_argument("Invalid second keyword: Use \"single\" or \"log\" instead");
+      }
+}
+
+
+
+// Alternative Algorithm sould be tested for efficiency
+ /*
     // Runge Kutta 3/8
     Vector3d xi = candidate->current.getPosition();
     Vector3d k1 = step * field->getField(xi).getUnitVector();
@@ -70,12 +111,3 @@ void DiffusionModule::process(Candidate *candidate) const {
     // 4-th order
     Vector3d step3d = (k1*25./216. + k3*1408./2565. + k4*2197./4104. - k5*1./5.);
     */
-
-
-	candidate->previous = candidate->current;
-	candidate->current.setPosition(xi + step3d);
-	candidate->setCurrentStep(stepSize);
-	candidate->setNextStep(stepSize);
-	candidate->current.setDirection(step3d);
-    }
-}
