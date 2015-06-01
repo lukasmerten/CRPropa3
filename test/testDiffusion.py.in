@@ -1,0 +1,76 @@
+import sys
+
+try:
+    import unittest
+except:
+    print("***********************************************************") 
+    print("* WARNING!! Couldn't import python unittesting framework! *") 
+    print("* No python tests have been executed                      *") 
+    print("***********************************************************") 
+    sys.exit(0)
+
+try:
+    from scipy.stats import anderson
+except:
+    print("***********************************************************") 
+    print("* WARNING!! Couldn't import python scipy.stats framework! *") 
+    print("* No python tests have been executed                      *") 
+    print("***********************************************************") 
+    sys.exit(-1)
+
+try:
+    from crpropa import *
+except Exception as e:
+    print("*** CRPropa import failed")
+    print(type(e), str(e))
+    sys.exit(-2)
+
+class DiffusionOneDirection(unittest.TestCase):
+    # magnetic field
+    ConstMagVec = Vector3d(0*nG,0*nG,1*nG)
+    BField = UniformMagneticField(ConstMagVec)
+    Dif = DiffusionModule(BField, 'log')
+    msg = "Note that this is a statistical test. It might fail by chance with a probabilty O(0.01)! You should rerun the test to make sure there is a bug."
+    
+    def test_DiffusionEnergy10(self):
+        zPosition = []
+        E = 10 * TeV
+        for i in range(10**3):
+            c = Candidate()
+            c.current.setId(nucleusId(1,1))
+            c.current.setEnergy(E)
+            while c.getTrajectoryLength() < 50 * kpc:
+                self.Dif.process(c)
+            zPosition.append(c.current.getPosition().z / parsec)
+        A2, Level, significant = anderson(zPosition, 'norm')
+        self.assertLess(A2, Level[4], msg=self.msg)
+    
+    def test_DiffusionEnergy1000(self):
+        zPosition = []
+        E = 1 * PeV
+        for i in range(10**3):
+            c = Candidate()
+            c.current.setId(nucleusId(1,1))
+            c.current.setEnergy(E)
+            while c.getTrajectoryLength() < 50 * kpc:
+                self.Dif.process(c)
+            zPosition.append(c.current.getPosition().z / parsec)
+        A2, Level, significant = anderson(zPosition, 'norm')
+        self.assertLess(A2, Level[4], msg=self.msg)
+        
+    def test_DiffusionEnergy100000(self):
+        zPosition = []
+        E = 100 * PeV
+        for i in range(10**3):
+            c = Candidate()
+            c.current.setId(nucleusId(1,1))
+            c.current.setEnergy(E)
+            while c.getTrajectoryLength() < 50 * kpc:
+                self.Dif.process(c)
+            zPosition.append(c.current.getPosition().z / parsec)
+        A2, Level, significant = anderson(zPosition, 'norm')
+        self.assertLess(A2, Level[4], msg=self.msg)
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -378,6 +378,9 @@ if(ENABLE_TESTING)
 	if(ENABLE_PYTHON)
 		CONFIGURE_FILE(test/testMagneticLensPythonInterface.py.in testMagneticLensPythonInterface.py)
 		ADD_TEST(testMagneticLensPythonInterface ${PYTHON_EXECUTABLE} testMagneticLensPythonInterface.py)
+
+		CONFIGURE_FILE(test/testDiffusion.py.in testDiffusion.py)
+		ADD_TEST(testDiffusion ${PYTHON_EXECUTABLE} testDiffusion.py)
 	endif(ENABLE_PYTHON)
 endif(ENABLE_TESTING)
 
