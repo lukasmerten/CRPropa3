@@ -65,14 +65,13 @@ void Observer::setFlag(std::string key, std::string value) {
 
 std::string Observer::getDescription() const {
 	std::stringstream ss;
-	ss << "Observer\n";
+	ss << "Observer";
 	for (int i = 0; i < features.size(); i++)
-		ss << "    " << features[i]->getDescription() << "\n";
+	ss << "    " << features[i]->getDescription() << "\n";
 	ss << "    Flag: '" << flagKey << "' -> '" << flagValue << "'\n";
 	ss << "    MakeInactive: " << (makeInactive ? "yes\n" : "no\n");
 	if (detectionAction.valid())
-		ss << "    Action: " << detectionAction->getDescription();
-
+	ss << "    Action: " << detectionAction->getDescription();
 	return ss.str();
 }
 
