@@ -106,6 +106,8 @@ using std::ptrdiff_t;
 #include "crpropa/PhotonPropagation.h"
 #include "crpropa/Grid.h"
 #include "crpropa/GridTools.h"
+
+#include "crpropa/Version.h"
 %}
 
 %{
@@ -202,6 +204,11 @@ using std::ptrdiff_t;
 
 %template(ModuleListRefPtr) crpropa::ref_ptr<crpropa::ModuleList>;
 %include "crpropa/ModuleList.h"
+
+%include "crpropa/Version.h"
+%pythoncode %{
+    __version__ = g_GIT_DESC 
+%}
 
 /* 3. Pretty print for Python */
 /*  __repr__ << getDescription */
@@ -421,7 +428,7 @@ class MagneticLens(MagneticLens):
   PyObject *getParticleIds_numpyArray()
   {
       std::vector<int> v = $self->getParticleIds();
-      npy_intp size = {v.size()};
+      npy_intp size = v.size();
       PyObject *out = PyArray_SimpleNew(1, &size, NPY_INT);
       memcpy(PyArray_DATA((PyArrayObject *) out), &v[0], v.size() * sizeof(int));
       return out; 
@@ -430,7 +437,7 @@ class MagneticLens(MagneticLens):
   PyObject *getEnergies_numpyArray(const int pid)
   {
       std::vector<double> v = $self->getEnergies(pid);
-      npy_intp size = {v.size()};
+      npy_intp size = v.size();
       PyObject *out = PyArray_SimpleNew(1, &size, NPY_DOUBLE);
       memcpy(PyArray_DATA((PyArrayObject *) out), &v[0], v.size() * sizeof(double));
       return out; 
@@ -445,7 +452,7 @@ class MagneticLens(MagneticLens):
       $self->getRandomParticles(N, particleId, energy, galacticLongitudes,
           galacticLatitudes);
       
-      npy_intp size = {N};
+      npy_intp size = N;
       PyObject *oId = PyArray_SimpleNew(1, &size, NPY_INT);
       PyObject *oEnergy = PyArray_SimpleNew(1, &size, NPY_DOUBLE);
       PyObject *oLon = PyArray_SimpleNew(1, &size, NPY_DOUBLE);
