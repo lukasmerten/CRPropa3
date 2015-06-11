@@ -22,49 +22,63 @@ DiffusionModule::DiffusionModule(ref_ptr<MagneticField> field, std::string m) :
 }
 
 void DiffusionModule::process(Candidate *candidate) const {
-	double rig = candidate->current.getEnergy() / candidate->current.getCharge();
-	double DifCoeff = 6.1e24*pow((rig/4.0e9), 1./3.);
+	// save the new previous particle state
+	ParticleState &current = candidate->current;
+	candidate->previous = current;
+	
+	Vector3d xi = current.getPosition();
+	double E = candidate->current.getEnergy();
+	double C = candidate->current.getCharge();
+	double rig = E / C;
+	double DifCoeff = 6.1e24 * pow((rig / 4.0e9), 1./3.);
 	double stepSize;
 	double step;
-	if(mode == singleString){
-	stepSize = 2. / c_light * DifCoeff;
-	step = stepSize;
-	}else if(mode == logString){
-	stepSize = 1. / c_light * DifCoeff; // log-step distribution
-	step = -1. * stepSize * log(1-Random::instance().rand()); // log-step distribution
+
+// rectilinear propagation for neutral particles step = 
+	if (C == 0) {
+		Vector3d dir = current.getDirection();
+		current.setPosition(xi + dir * 100 * parsec);
+		candidate->setCurrentStep(100 * parsec);
+		candidate->setNextStep(100 * parsec);
+		return;
 	}
-	
 
-    if (Random::instance().rand() < .5) {
-        step *= -1;
-    }
+// Diffusion for charged particles 
+	if(mode == singleString){ // single step distribution
+	  stepSize = 2. / c_light * DifCoeff;
+	  step = stepSize;
+	}else if(mode == logString){ // log-step distribution
+	  stepSize = 1. / c_light * DifCoeff;
+	  step = -1. * stepSize * log(1-Random::instance().rand());
+	}
+
+   	if (Random::instance().rand() < .5) {
+	  step *= -1;
+	}
+
+// runge kutta step
+    	Vector3d k1 = step * field->getField(xi).getUnitVector();
+	Vector3d k2 = step * field->getField(xi + k1/2.0).getUnitVector();
+	Vector3d k3 = step * field->getField(xi + k2/2.0).getUnitVector();
+	Vector3d k4 = step * field->getField(xi + k3).getUnitVector();
     
-    // runge kutta step
-    
-    Vector3d xi = candidate->current.getPosition();
-    if (field->getField(xi).getR() == 0.){
-      Vector3d step3d = candidate->current.getDirection() * stepSize;
-      	candidate->previous = candidate->current;
-	candidate->current.setPosition(xi + step3d);
+	Vector3d step3d = (k1 + 2.0*(k2+k3) + k4)/6.; 
+
+// rectilinear propagation if magnetic field is B=0
+	if(step3d.getR2() != step3d.getR2()){
+	  Vector3d dir = current.getDirection();
+	  current.setPosition(xi + dir * stepSize);
+	  current.setDirection(dir);
+	  candidate->setCurrentStep(stepSize);
+	  candidate->setNextStep(stepSize);
+	  return;
+	}
+
+	current.setPosition(xi + step3d);
 	candidate->setCurrentStep(stepSize);
 	candidate->setNextStep(stepSize);
-	candidate->current.setDirection(step3d);
-
-    }else{
-    Vector3d k1 = step * field->getField(xi).getUnitVector();
-    Vector3d k2 = step * field->getField(xi + k1/2.0).getUnitVector();
-    Vector3d k3 = step * field->getField(xi + k2/2.0).getUnitVector();
-    Vector3d k4 = step * field->getField(xi + k3).getUnitVector();
-    
-    Vector3d step3d = (k1 + 2.0*(k2+k3) + k4)/6.; 
-
-	candidate->previous = candidate->current;
-	candidate->current.setPosition(xi + step3d);
-	candidate->setCurrentStep(stepSize);
-	candidate->setNextStep(stepSize);
-	candidate->current.setDirection(step3d);
-    }
-    }
+	current.setDirection(step3d);
+}
 
 void DiffusionModule::InputCheck(std::string c) {
       check = c;
@@ -84,7 +98,7 @@ void DiffusionModule::InputCheck(std::string c) {
 
 
 
-// Alternative Algorithm sould be tested for efficiency
+// Alternative Algorithm should be tested for efficiency
  /*
     // Runge Kutta 3/8
     Vector3d xi = candidate->current.getPosition();
