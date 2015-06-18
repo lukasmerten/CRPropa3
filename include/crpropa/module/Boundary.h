@@ -50,30 +50,6 @@ public:
 };
 
 /**
- @class AbstractBoundary
- @brief Abstract Module providing common features for boundary modules.
- */
-class AbstractBoundary: public Module {
-protected:
-	ref_ptr<Module> outOfBoundsAction;
-	bool makeInactive;
-	std::string flagKey;
-	std::string flagValue;
-
-	void processOutOfBounds(Candidate *candidate) const;
-	inline void processOutOfBounds(ref_ptr<Candidate> candidate) const {
-		processOutOfBounds(candidate.get());
-	}
-
-public:
-	AbstractBoundary();
-	void onOutOfBounds(Module *action);
-	void setMakeInactive(bool makeInactive);
-	void setFlag(std::string flag, std::string flagValue);
-	void endRun();
-};
-
-/**
  @class CubicBoundary
  @brief Flags a particle when exiting the cube.
 
@@ -81,7 +57,7 @@ public:
  The particle is made inactive and by default is flagged "OutOfBounds".
  Optionally the module can ensure the candidate does not overshoot the boundary by more than a set margin.
  */
-class CubicBoundary: public AbstractBoundary {
+class CubicBoundary: public AbstractCondition {
 private:
 	Vector3d origin;
 	double size;
@@ -106,7 +82,7 @@ public:
  The particle is made inactive and by default is flagged "OutOfBounds".
  Optionally the module can ensure the candidate does not overshoot the boundary by more than a set margin.
  */
-class SphericalBoundary: public AbstractBoundary {
+class SphericalBoundary: public AbstractCondition {
 private:
 	Vector3d center;
 	double radius;
@@ -132,7 +108,7 @@ public:
  The particle is made inactive and by default is flagged "OutOfBounds".
  Optionally the module can ensure the candidate does not overshoot the boundary by more than a set margin.
  */
-class EllipsoidalBoundary: public AbstractBoundary {
+class EllipsoidalBoundary: public AbstractCondition {
 private:
 	Vector3d focalPoint1;
 	Vector3d focalPoint2;
@@ -147,35 +123,6 @@ public:
 	void process(Candidate *candidate) const;
 	void setFocalPoints(Vector3d focalPoint1, Vector3d focalPoint2);
 	void setMajorAxis(double size);
-	void setMargin(double margin);
-	void setLimitStep(bool limitStep);
-	std::string getDescription() const;
-};
-
-/**
- @class CylindricalBoundary
- @brief Flags a particle when leaving the cylinder.
-
- This module flags particles when outside of the cylinder, defined by a radius and a height.
- The particle is made inactive and by default is flagged "OutOfBounds".
- Optionally the module can ensure the candidate does not overshoot the boundary by more than a set margin.
- */
-class CylindricalBoundary: public AbstractBoundary {
-private:
-	Vector3d origin;
-	double height;
-	double radius;
-	double margin;
-	bool limitStep;
-
-public:
-	CylindricalBoundary();
-	CylindricalBoundary(Vector3d origin, double height,
-			double radius);
-	void process(Candidate *candidate) const;
-	void setOrigin(Vector3d origin);
-	void setHeight(double height);
-	void setRadius(double radius);
 	void setMargin(double margin);
 	void setLimitStep(bool limitStep);
 	std::string getDescription() const;

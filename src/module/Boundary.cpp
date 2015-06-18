@@ -109,43 +109,6 @@ std::string ReflectiveBox::getDescription() const {
 	return s.str();
 }
 
-AbstractBoundary::AbstractBoundary() :
-		makeInactive(true), flagKey("OutOfBounds") {
-
-}
-
-void AbstractBoundary::onOutOfBounds(Module *action) {
-	outOfBoundsAction = action;
-}
-
-void AbstractBoundary::processOutOfBounds(Candidate *candidate) const {
-	if (!candidate)
-		return;
-
-	if (outOfBoundsAction.valid())
-		outOfBoundsAction->process(candidate);
-
-	if (!flagKey.empty())
-		candidate->setProperty(flagKey, flagValue);
-
-	if (makeInactive)
-		candidate->setActive(false);
-}
-
-void AbstractBoundary::setMakeInactive(bool deactivate) {
-	makeInactive = deactivate;
-}
-
-void AbstractBoundary::setFlag(std::string key, std::string value) {
-	flagKey = key;
-	flagValue = value;
-}
-
-void AbstractBoundary::endRun() {
-	if (outOfBoundsAction.valid())
-		outOfBoundsAction->endRun();
-}
-
 CubicBoundary::CubicBoundary() :
 		origin(Vector3d(0, 0, 0)), size(0), margin(0), limitStep(false) {
 }
@@ -159,7 +122,7 @@ void CubicBoundary::process(Candidate *c) const {
 	double lo = r.min();
 	double hi = r.max();
 	if ((lo <= 0) or (hi >= size)) {
-		processOutOfBounds(c);
+		reject(c);
 	}
 	if (limitStep) {
 		c->limitNextStep(lo + margin);
@@ -184,10 +147,10 @@ std::string CubicBoundary::getDescription() const {
 	std::stringstream s;
 	s << "Cubic Boundary: origin " << origin / Mpc << " Mpc, ";
 	s << "size " << size / Mpc << " Mpc, ";
-	s << "Flag: " << flagKey << " -> " << flagValue << ", ";
-	s << "MakeInactive: " << (makeInactive ? "yes" : "no");
-	if (outOfBoundsAction.valid())
-		s << ", Action: " << outOfBoundsAction->getDescription();
+	s << "Flag: '" << rejectFlagKey << "' -> '" << rejectFlagValue << "', ";
+	s << "MakeInactive: " << (makeRejectedInactive ? "yes" : "no");
+	if (rejectAction.valid())
+		s << ", Action: " << rejectAction->getDescription();
 	return s.str();
 }
 
@@ -202,7 +165,7 @@ SphericalBoundary::SphericalBoundary(Vector3d c, double r) :
 void SphericalBoundary::process(Candidate *c) const {
 	double d = (c->current.getPosition() - center).getR();
 	if (d >= radius) {
-		processOutOfBounds(c);
+		reject(c);
 	}
 	if (limitStep)
 		c->limitNextStep(radius - d + margin);
@@ -225,10 +188,10 @@ std::string SphericalBoundary::getDescription() const {
 	std::stringstream s;
 	s << "Spherical Boundary: radius " << radius / Mpc << " Mpc, ";
 	s << "around " << center / Mpc << " Mpc, ";
-	s << "Flag: '" << flagKey << "' -> '" << flagValue << "', ";
-	s << "MakeInactive: " << makeInactive ? "yes" : "no";
-	if (outOfBoundsAction.valid())
-		s << ", Action: " << outOfBoundsAction->getDescription();
+	s << "Flag: '" << rejectFlagKey << "' -> '" << rejectFlagValue << "', ";
+	s << "MakeInactive: " << (makeRejectedInactive ? "yes" : "no");
+	if (rejectAction.valid())
+		s << ", Action: " << rejectAction->getDescription();
 	return s.str();
 }
 
@@ -246,7 +209,7 @@ void EllipsoidalBoundary::process(Candidate *c) const {
 	Vector3d pos = c->current.getPosition();
 	double d = pos.getDistanceTo(focalPoint1) + pos.getDistanceTo(focalPoint2);
 	if (d >= majorAxis) {
-		processOutOfBounds(c);
+		reject(c);
 	}
 	if (limitStep)
 		c->limitNextStep(majorAxis - d + margin);
@@ -271,60 +234,10 @@ std::string EllipsoidalBoundary::getDescription() const {
 	s << "Ellipsoidal Boundary: F1 = " << focalPoint1 / Mpc << " Mpc, ";
 	s << "F2 = " << focalPoint2 / Mpc << " Mpc, ";
 	s << "major axis " << majorAxis / Mpc << " Mpc; ";
-	s << "Flag: '" << flagKey << "' -> '" << flagValue << "', ";
-	s << "MakeInactive: " << makeInactive ? "yes" : "no";
-	if (outOfBoundsAction.valid())
-		s << ", Action: " << outOfBoundsAction->getDescription();
-	return s.str();
-}
-
-CylindricalBoundary::CylindricalBoundary() :
-  origin(Vector3d(0,0,0)), height(0), radius(0), limitStep(false), margin(0) {
-}
-
-CylindricalBoundary::CylindricalBoundary(Vector3d o, double h, double r) :
-  origin(o), height(h), radius(r), limitStep(false) , margin(0){
-}
-
-void CylindricalBoundary::process(Candidate *c) const {
-	Vector3d d = c->current.getPosition() - origin;
-	double R2 = pow(d.x, 2.)+pow(d.y, 2.);
-	double Z = fabs(d.z);
-	if ( R2 < pow(radius, 2.) and Z < height/2.) {
-	  if(limitStep) {
-	    c->limitNextStep(std::min(radius - pow(R2, 0.5), height/2. - Z) + margin);
-	  }
-	  return;
-	}
-	processOutOfBounds(c);
-}
-
-void CylindricalBoundary::setOrigin(Vector3d o) {
-	origin = o;
-}
-void CylindricalBoundary::setHeight(double h) {
-	height = h;
-}
-void CylindricalBoundary::setRadius(double r) {
-	radius = r;
-}
-void CylindricalBoundary::setLimitStep(bool b) {
-	limitStep = b;
-}
-void CylindricalBoundary::setMargin(double m) {
-        margin = m;
-}
-
-
-std::string CylindricalBoundary::getDescription() const {
-	std::stringstream s;
-	s << "Cylindrical Boundary: origin = " << origin / kpc << " kpc, ";
-	s << "radius = " << radius / kpc << " kpc, ";
-	s << "height" << height / kpc << " kpc; ";
-	s << "Flag: '" << flagKey << "' -> '" << flagValue << "', ";
-	s << "MakeInactive: " << makeInactive ? "yes" : "no";
-	if (outOfBoundsAction.valid())
-		s << ", Action: " << outOfBoundsAction->getDescription();
+	s << "Flag: '" << rejectFlagKey << "' -> '" << rejectFlagValue << "', ";
+	s << "MakeInactive: " << (makeRejectedInactive ? "yes" : "no");
+	if (rejectAction.valid())
+		s << ", Action: " << rejectAction->getDescription();
 	return s.str();
 }
 

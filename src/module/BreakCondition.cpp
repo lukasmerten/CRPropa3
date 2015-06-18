@@ -5,43 +5,6 @@
 
 namespace crpropa {
 
-AbstractBreakCondition::AbstractBreakCondition() :
-		makeInactive(true), flagKey("Deactivated") {
-
-}
-
-void AbstractBreakCondition::processBreak(Candidate *candidate) const {
-	if (!candidate)
-		return;
-
-	if (breakAction.valid())
-		breakAction->process(candidate);
-
-	if (!flagKey.empty())
-		candidate->setProperty(flagKey, flagValue);
-
-	if (makeInactive)
-		candidate->setActive(false);
-}
-
-void AbstractBreakCondition::setMakeInactive(bool deactivate) {
-	makeInactive = deactivate;
-}
-
-void AbstractBreakCondition::onBreak(Module *action) {
-	breakAction = action;
-}
-
-void AbstractBreakCondition::setFlag(std::string key, std::string value) {
-	flagKey = key;
-	flagValue = value;
-}
-
-void AbstractBreakCondition::endRun() {
-	if (breakAction.valid())
-		breakAction->endRun();
-}
-
 MaximumTrajectoryLength::MaximumTrajectoryLength(double maxLength) :
 		maxLength(maxLength) {
 }
@@ -57,17 +20,17 @@ double MaximumTrajectoryLength::getMaximumTrajectoryLength() const {
 std::string MaximumTrajectoryLength::getDescription() const {
 	std::stringstream s;
 	s << "Maximum trajectory length: " << maxLength / Mpc << " Mpc, ";
-	s << "Flag: '" << flagKey << "' -> '" << flagValue << "', ";
-	s << "MakeInactive: " << (makeInactive ? "yes" : "no");
-	if (breakAction.valid())
-		s << ", Action: " << breakAction->getDescription();
+	s << "Flag: '" << rejectFlagKey << "' -> '" << rejectFlagValue << "', ";
+	s << "MakeInactive: " << (makeRejectedInactive ? "yes" : "no");
+	if (rejectAction.valid())
+		s << ", Action: " << rejectAction->getDescription();
 	return s.str();
 }
 
 void MaximumTrajectoryLength::process(Candidate *c) const {
 	double l = c->getTrajectoryLength();
 	if (l >= maxLength) {
-		processBreak(c);
+		reject(c);
 	} else {
 		c->limitNextStep(maxLength - l);
 	}
@@ -89,16 +52,16 @@ void MinimumEnergy::process(Candidate *c) const {
 	if (c->current.getEnergy() > minEnergy)
 		return;
 	else
-		processBreak(c);
+		reject(c);
 }
 
 std::string MinimumEnergy::getDescription() const {
 	std::stringstream s;
 	s << "Minimum energy: " << minEnergy / EeV << " EeV, ";
-	s << "Flag: '" << flagKey << "' -> '" << flagValue << "', ";
-	s << "MakeInactive: " << (makeInactive ? "yes" : "no");
-	if (breakAction.valid())
-		s << ", Action: " << breakAction->getDescription();
+	s << "Flag: '" << rejectFlagKey << "' -> '" << rejectFlagValue << "', ";
+	s << "MakeInactive: " << (makeRejectedInactive ? "yes" : "no");
+	if (rejectAction.valid())
+		s << ", Action: " << rejectAction->getDescription();
 	return s.str();
 }
 
@@ -118,16 +81,16 @@ void MinimumRedshift::process(Candidate* c) const {
 	if (c->getRedshift() > zmin)
 		return;
 	else
-		processBreak(c);
+		reject(c);
 }
 
 std::string MinimumRedshift::getDescription() const {
 	std::stringstream s;
 	s << "Minimum redshift: " << zmin << ", ";
-	s << "Flag: '" << flagKey << "' -> '" << flagValue << "', ";
-	s << "Meactivate: " << makeInactive ? "yes" : "no";
-	if (breakAction.valid())
-		s << ", Action: " << breakAction->getDescription();
+	s << "Flag: '" << rejectFlagKey << "' -> '" << rejectFlagValue << "', ";
+	s << "MakeInactive: " << (makeRejectedInactive ? "yes" : "no");
+	if (rejectAction.valid())
+		s << ", Action: " << rejectAction->getDescription();
 	return s.str();
 }
 
