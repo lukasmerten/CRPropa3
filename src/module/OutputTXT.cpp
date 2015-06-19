@@ -3,9 +3,246 @@
 
 #include <stdio.h>
 
+#ifdef CRPROPA_HAVE_ZLIB
+#include <ozstream.hpp>
+#include <kiss/string.h>
+#endif
+
 namespace crpropa {
 
-  TrajectoryOutput::TrajectoryOutput(std::string name): SpatialScale(Mpc), EnergyScale(EeV) {
+TextOutput::TextOutput() : lengthScale(Mpc), energyScale(EeV), out(&std::cout), oneDimensional(false) {
+	enableAll();
+}
+
+TextOutput::TextOutput(std::ostream &out) : lengthScale(Mpc), energyScale(EeV), out(&out), oneDimensional(false) {
+	enableAll();
+}
+
+TextOutput::TextOutput(const std::string &filename) : lengthScale(Mpc), energyScale(EeV), outfile(filename.c_str(), std::ios::binary), out(&outfile), oneDimensional(false) {
+	enableAll();
+        if (kiss::ends_with(filename, ".gz"))
+            gzip();
+}
+
+void TextOutput::setEnergyScale(double scale) {
+	energyScale = scale;
+}
+
+void TextOutput::setLengthScale(double scale) {
+	lengthScale = scale;
+}
+
+void TextOutput::set1D(bool value) {
+    oneDimensional = value;
+}
+
+void TextOutput::enable(OutputColumn field) {
+	fields.set(field, true);
+}
+
+void TextOutput::disable(OutputColumn field) {
+	fields.set(field, false);
+}
+
+void TextOutput::set(OutputColumn field, bool value) {
+	fields.set(field, value);
+}
+
+void TextOutput::enableAll() {
+	fields.set();
+}
+
+void TextOutput::disableAll() {
+	fields.reset();
+}
+
+void TextOutput::printHeader() {
+	*out << "#";
+    if (fields.test(TrajectoryLengthColumn))
+		*out << "\tD";
+    if (fields.test(RedshiftColumn))
+		*out << "\tz";
+    if (fields.test(CurrentIdColumn))
+		*out << "\tID";
+    if (fields.test(CurrentEnergyColumn))
+		*out << "\tE";
+    if (fields.test(CurrentPositionColumn)) {
+        if (oneDimensional)
+        *out << "\tX";
+        else
+        *out << "\tX\tY\tZ";
+    }
+    if (fields.test(CurrentDirectionColumn)) {
+        if (oneDimensional)
+        *out << "\tPx";
+        else
+        *out << "\tPx\tPy\tPz";
+    }
+
+    if (fields.test(SourceIdColumn))
+		*out << "\tID0";
+    if (fields.test(SourceEnergyColumn))
+		*out << "\tE0";
+    if (fields.test(SourcePositionColumn)) {
+        if (oneDimensional)
+        *out << "\tX0";
+        else
+        *out << "\tX0\tY0\tZ0";
+    }
+    if (fields.test(SourceDirectionColumn))  {
+        if (oneDimensional)
+        *out << "\tP0x";
+        else
+        *out << "\tP0x\tP0y\tP0z";
+    }
+
+    if (fields.test(CreatedIdColumn))
+		*out << "\tID1";
+    if (fields.test(CreatedEnergyColumn))
+		*out << "\tE1";
+    if (fields.test(CreatedPositionColumn))  {
+        if (oneDimensional)
+        *out << "\tX1";
+        else
+        *out << "\tX1\tY1\tZ1";
+}
+    if (fields.test(CreatedDirectionColumn))  {
+        if (oneDimensional)
+        *out << "\tP1x";
+        else
+        *out << "\tP1x\tP1y\tP1z";
+    }
+
+
+	*out << "\n#\n";
+    if (fields.test(TrajectoryLengthColumn))
+		*out << "# D             Trajectory length [" << lengthScale / Mpc << " Mpc]\n";
+    if (fields.test(RedshiftColumn))
+		*out << "# z             Redshift\n";
+    if (fields.test(CurrentIdColumn) || fields.test(CreatedIdColumn) || fields.test(SourceIdColumn))
+		*out << "# ID/ID0/ID1    Particle type (PDG MC numbering scheme)\n";
+    if (fields.test(CurrentEnergyColumn) || fields.test(CreatedEnergyColumn) || fields.test(SourceEnergyColumn))
+		*out << "# E/E0/E1       Energy [" << energyScale / EeV << " EeV]\n";
+    if (fields.test(CurrentPositionColumn) || fields.test(CreatedPositionColumn) || fields.test(SourcePositionColumn)) 
+		*out << "# X/X0/X1...    Position [" << lengthScale / Mpc << " Mpc]\n";
+    if (fields.test(CurrentDirectionColumn) || fields.test(CreatedDirectionColumn) || fields.test(SourceDirectionColumn))
+		*out << "# Px/P0x/P1x... Heading (unit vector of momentum)\n";
+	*out << "# 0 = Source, 1 = Created, e.g. interaction point\n";
+}
+
+void TextOutput::process(Candidate *c) const {
+	if (fields.none())
+		return;
+
+	char buffer[1024];
+	size_t p = 0;
+
+    if (fields.test(TrajectoryLengthColumn))
+		p += sprintf(buffer + p, "%8.5f\t", c->getTrajectoryLength() / lengthScale);
+    if (fields.test(RedshiftColumn))
+		p += sprintf(buffer + p, "%1.5f\t", c->getRedshift());
+    if (fields.test(CurrentIdColumn))
+		p += sprintf(buffer + p, "%10i\t", c->current.getId());
+    if (fields.test(CurrentEnergyColumn))
+		p += sprintf(buffer + p, "%8.5f\t", c->current.getEnergy() / energyScale);
+    if (fields.test(CurrentPositionColumn)) {
+                if (oneDimensional) {
+                    p += sprintf(buffer + p, "%8.5f\t", c->current.getPosition().x / lengthScale);
+                } else {
+                    const Vector3d pos = c->current.getPosition() / lengthScale;
+                    p += sprintf(buffer + p, "%8.5f\t%8.5f\t%8.5f\t", pos.x, pos.y, pos.z);
+                }
+	}
+    if (fields.test(CurrentDirectionColumn)) {
+                if (oneDimensional) {
+                    p += sprintf(buffer + p, "%8.5f\t", c->current.getDirection().x);
+                } else {
+                    const Vector3d pos = c->current.getDirection();
+                    p += sprintf(buffer + p, "%8.5f\t%8.5f\t%8.5f\t", pos.x, pos.y, pos.z);
+                }
+	}
+	
+    if (fields.test(SourceIdColumn))
+		p += sprintf(buffer + p, "%10i\t", c->source.getId());
+    if (fields.test(SourceEnergyColumn))
+		p += sprintf(buffer + p, "%8.5f\t", c->source.getEnergy() / energyScale);
+    if (fields.test(SourcePositionColumn)) {
+                if (oneDimensional) {
+                    p += sprintf(buffer + p, "%8.5f\t", c->source.getPosition().x / lengthScale);
+                } else {
+                    const Vector3d pos = c->source.getPosition() / lengthScale;
+                    p += sprintf(buffer + p, "%8.5f\t%8.5f\t%8.5f\t", pos.x, pos.y, pos.z);
+                }
+	}
+    if (fields.test(SourceDirectionColumn)) {
+                if (oneDimensional) {
+                    p += sprintf(buffer + p, "%8.5f\t", c->source.getDirection().x);
+                } else {
+                    const Vector3d pos = c->source.getDirection();
+                    p += sprintf(buffer + p, "%8.5f\t%8.5f\t%8.5f\t", pos.x, pos.y, pos.z);
+                }
+        
+    }
+
+    if (fields.test(CreatedIdColumn))
+		p += sprintf(buffer + p, "%10i\t", c->created.getId());
+    if (fields.test(CreatedEnergyColumn))
+		p += sprintf(buffer + p, "%8.5f\t", c->created.getEnergy() / energyScale);
+    if (fields.test(CreatedPositionColumn)) {
+                if (oneDimensional) {
+                    p += sprintf(buffer + p, "%8.5f\t", c->created.getPosition().x / lengthScale);
+                } else {
+                    const Vector3d pos = c->created.getPosition() / lengthScale;
+                    p += sprintf(buffer + p, "%8.5f\t%8.5f\t%8.5f\t", pos.x, pos.y, pos.z);
+                }
+	}
+    if (fields.test(CreatedDirectionColumn)) {
+                if (oneDimensional) {
+                    p += sprintf(buffer + p, "%8.5f\t", c->created.getDirection().x);
+                } else {
+                    const Vector3d pos = c->created.getDirection();
+                    p += sprintf(buffer + p, "%8.5f\t%8.5f\t%8.5f\t", pos.x, pos.y, pos.z);
+                }
+        
+    }	
+
+	buffer[p-1] = '\n';
+
+#pragma omp critical
+{
+	out->write(buffer, p);
+}
+
+}
+
+void TextOutput::endRun() {
+#ifdef CRPROPA_HAVE_ZLIB
+     zstream::ogzstream *zs = dynamic_cast<zstream::ogzstream *>(out);
+     if (zs) {
+        zs->close();
+     }
+#endif    
+}
+
+TextOutput::~TextOutput() {
+#ifdef CRPROPA_HAVE_ZLIB
+     zstream::ogzstream *zs = dynamic_cast<zstream::ogzstream *>(out);
+     if (zs) {
+        delete zs;
+     }
+#endif
+    outfile.close();
+}
+
+void TextOutput::gzip() {
+#ifdef CRPROPA_HAVE_ZLIB
+    out = new zstream::ogzstream(*out);
+#else
+    throw std::runtime_error("CRPropa was build without Zlib compression!");
+#endif
+}
+
+TrajectoryOutput::TrajectoryOutput(std::string name) {
 	setDescription("Trajectory output");
 	fout.open(name.c_str());
 	fout << "# D\tID\tE\tX\tY\tZ\tPx\tPy\tPz\n"
@@ -18,19 +255,6 @@ namespace crpropa {
 	     << "#\n";
 }
 
-  TrajectoryOutput::TrajectoryOutput(std::string name, double s, double E): SpatialScale(s), EnergyScale(E) {
-	setDescription("Trajectory output");
-	fout.open(name.c_str());
-	fout << "# D\tID\tE\tX\tY\tZ\tPx\tPy\tPz\n"
-	     << "#\n"
-	     << "# D           Trajectory length\n"
-	     << "# ID          Particle type (PDG MC numbering scheme)\n"
-	     << "# E           Energy ["<<EnergyScale/TeV << "*TeV]\n"
-	     << "# X, Y, Z     Position ["<< SpatialScale/kpc <<"*kpc]\n"
-	     << "# Px, Py, Pz  Heading (unit vector of momentum)\n"
-	     << "#\n";
-}
- 
 TrajectoryOutput::~TrajectoryOutput() {
 	fout.close();
 }
@@ -39,10 +263,10 @@ void TrajectoryOutput::process(Candidate *c) const {
 	char buffer[1024];
 	size_t p = 0;
 
-	p += sprintf(buffer + p, "%8.3f\t", c->getTrajectoryLength() / SpatialScale);
+	p += sprintf(buffer + p, "%8.3f\t", c->getTrajectoryLength() / Mpc);
 	p += sprintf(buffer + p, "%10i\t", c->current.getId());
-	p += sprintf(buffer + p, "%8.4f\t", c->current.getEnergy() / EnergyScale);
-	Vector3d pos = c->current.getPosition() / SpatialScale;
+	p += sprintf(buffer + p, "%8.4f\t", c->current.getEnergy() / EeV);
+	Vector3d pos = c->current.getPosition() / Mpc;
 	p += sprintf(buffer + p, "%8.4f\t%8.4f\t%8.4f\t", pos.x, pos.y, pos.z);
 	const Vector3d &dir = c->current.getDirection();
 	p += sprintf(buffer + p, "%8.5f\t%8.5f\t%8.5f\n", dir.x, dir.y, dir.z);
@@ -56,7 +280,7 @@ void TrajectoryOutput::endRun() {
 }
 
 ConditionalOutput::ConditionalOutput(std::string fname, std::string cond) :
-  condition(cond), SpatialScale(Mpc), EnergyScale(EeV) {
+		condition(cond) {
 	setDescription(
 			"Conditional output, condition: " + cond + ", filename: " + fname);
 	fout.open(fname.c_str());
@@ -72,23 +296,6 @@ ConditionalOutput::ConditionalOutput(std::string fname, std::string cond) :
 	     << "#\n";
 }
 
-  ConditionalOutput::ConditionalOutput(std::string fname, double s, double E, std::string cond) :
-    condition(cond), SpatialScale(s), EnergyScale(E) {
-	setDescription(
-			"Conditional output, condition: " + cond + ", filename: " + fname);
-	fout.open(fname.c_str());
-	fout << "# D\tID\tID0\tE\tE0\tX\tY\tZ\tX0\tY0\tZ0\tPx\tPy\tPz\tP0x\tP0y\tP0z\tz\n"
-	     << "#\n"
-	     << "# D           Trajectory length ["<< SpatialScale/kpc <<"*kpc]\n"
-	     << "# ID          Particle type (PDG MC numbering scheme)\n"
-	     << "# E           Energy ["<<EnergyScale/TeV << "*TeV]\n"
-	     << "# X, Y, Z     Position ["<< SpatialScale/kpc <<"*kpc]\n"
-	     << "# Px, Py, Pz  Heading (unit vector of momentum)\n"
-	     << "# z           Current redshift\n"
-	     << "# Initial state: ID0, E0, ...\n"
-	     << "#\n";
-}
-  
 ConditionalOutput::~ConditionalOutput() {
 	fout.close();
 }
@@ -102,14 +309,14 @@ void ConditionalOutput::process(Candidate *c) const {
 	char buffer[1024];
 	size_t p = 0;
 
-	p += sprintf(buffer + p, "%8.3f\t", c->getTrajectoryLength() / SpatialScale);
+	p += sprintf(buffer + p, "%8.3f\t", c->getTrajectoryLength() / Mpc);
 	p += sprintf(buffer + p, "%10i\t", c->current.getId());
 	p += sprintf(buffer + p, "%10i\t", c->source.getId());
-	p += sprintf(buffer + p, "%8.4f\t", c->current.getEnergy() / EnergyScale);
-	p += sprintf(buffer + p, "%8.4f\t", c->source.getEnergy() / EnergyScale);
-	Vector3d pos = c->current.getPosition() / SpatialScale;
+	p += sprintf(buffer + p, "%8.4f\t", c->current.getEnergy() / EeV);
+	p += sprintf(buffer + p, "%8.4f\t", c->source.getEnergy() / EeV);
+	Vector3d pos = c->current.getPosition() / Mpc;
 	p += sprintf(buffer + p, "%9.4f\t%9.4f\t%9.4f\t", pos.x, pos.y, pos.z);
-	Vector3d ipos = c->source.getPosition() / SpatialScale;
+	Vector3d ipos = c->source.getPosition() / Mpc;
 	p += sprintf(buffer + p, "%9.4f\t%9.4f\t%9.4f\t", ipos.x, ipos.y, ipos.z);
 	Vector3d dir = c->current.getDirection();
 	p += sprintf(buffer + p, "%8.5f\t%8.5f\t%8.5f\t", dir.x, dir.y, dir.z);
@@ -125,7 +332,7 @@ void ConditionalOutput::endRun() {
 	fout.flush();
 }
 
-  TrajectoryOutput1D::TrajectoryOutput1D(std::string filename) : SpatialScale(Mpc), EnergyScale(EeV){
+TrajectoryOutput1D::TrajectoryOutput1D(std::string filename) {
 	setDescription("TrajectoryOutput, filename: " + filename);
 	fout.open(filename.c_str());
 	fout << "#X\tID\tE\n"
@@ -135,16 +342,6 @@ void ConditionalOutput::endRun() {
 	     << "# E  Energy [EeV]\n";
 }
 
-  TrajectoryOutput1D::TrajectoryOutput1D(std::string filename, double s, double E) : SpatialScale(s), EnergyScale(E) {
-	setDescription("TrajectoryOutput, filename: " + filename);
-	fout.open(filename.c_str());
-	fout << "#X\tID\tE\n"
-	     << "#\n"
-	     << "# X  Position [" << SpatialScale/kpc <<"*kpc]\n"
-	     << "# ID Particle type\n"
-	     << "# E  Energy ["<<EnergyScale/TeV << "*TeV]\n";
-}
-  
 TrajectoryOutput1D::~TrajectoryOutput1D() {
 	fout.close();
 }
@@ -152,9 +349,9 @@ TrajectoryOutput1D::~TrajectoryOutput1D() {
 void TrajectoryOutput1D::process(Candidate *c) const {
 	char buffer[1024];
 	size_t p = 0;
-	p += sprintf(buffer + p, "%8.4f\t", c->current.getPosition().x / SpatialScale);
+	p += sprintf(buffer + p, "%8.4f\t", c->current.getPosition().x / Mpc);
 	p += sprintf(buffer + p, "%10i\t", c->current.getId());
-	p += sprintf(buffer + p, "%8.4f\n", c->current.getEnergy() / EnergyScale);
+	p += sprintf(buffer + p, "%8.4f\n", c->current.getEnergy() / EeV);
 
 #pragma omp critical
 	fout.write(buffer, p);
@@ -164,7 +361,7 @@ void TrajectoryOutput1D::endRun() {
 	fout.flush();
 }
 
-  EventOutput1D::EventOutput1D(std::string filename) : SpatialScale(Mpc), EnergyScale(EeV) {
+EventOutput1D::EventOutput1D(std::string filename) {
 	setDescription("Conditional output, filename: " + filename);
 	fout.open(filename.c_str());
 	fout << "#ID\tE\tD\tID0\tE0\n"
@@ -176,18 +373,6 @@ void TrajectoryOutput1D::endRun() {
 	     << "# E0  Initial energy [EeV]\n";
 }
 
-  EventOutput1D::EventOutput1D(std::string filename, double s, double E) : SpatialScale(s), EnergyScale(E) {
-	setDescription("Conditional output, filename: " + filename);
-	fout.open(filename.c_str());
-	fout << "#ID\tE\tD\tID0\tE0\n"
-	     << "#\n"
-	     << "# ID  Particle type\n"
-	     << "# E   Energy [EeV]\n"
-	     << "# D   Comoving source distance ["<< SpatialScale/kpc <<"*kpc]\n"
-	     << "# ID0 Initial particle type\n"
-	     << "# E0  Initial energy ["<<EnergyScale/TeV << "*TeV]\n";
-}
-
 EventOutput1D::~EventOutput1D() {
 	fout.close();
 }
@@ -197,10 +382,10 @@ void EventOutput1D::process(Candidate *c) const {
 	size_t p = 0;
 
 	p += sprintf(buffer + p, "%10i\t", c->current.getId());
-	p += sprintf(buffer + p, "%8.4f\t", c->current.getEnergy() / EnergyScale);
-	p += sprintf(buffer + p, "%9.4f\t", c->source.getPosition().x / SpatialScale);
+	p += sprintf(buffer + p, "%8.4f\t", c->current.getEnergy() / EeV);
+	p += sprintf(buffer + p, "%9.4f\t", c->source.getPosition().x / Mpc);
 	p += sprintf(buffer + p, "%10i\t", c->source.getId());
-	p += sprintf(buffer + p, "%8.4f\n", c->source.getEnergy() / EnergyScale);
+	p += sprintf(buffer + p, "%8.4f\n", c->source.getEnergy() / EeV);
 
 #pragma omp critical
 	fout.write(buffer, p);
