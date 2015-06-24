@@ -162,7 +162,7 @@ Vector3d JF12Field::getRegularField(const Vector3d& pos) const {
 
 	double r = sqrt(pos.x * pos.x + pos.y * pos.y); // in-plane radius
 	double d = pos.getR(); // distance to galactic center
-	if ((d < 1 * kpc) or (d > 20 * kpc))
+	if ((d < 0 * kpc) or (d > 20 * kpc))
 		return b; // 0 field for d < 1 kpc or d > 20 kpc
 
 	double phi = pos.getPhi(); // azimuth
