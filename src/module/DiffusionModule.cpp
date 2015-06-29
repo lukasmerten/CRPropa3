@@ -52,7 +52,9 @@ void DiffusionModule::process(Candidate *candidate) const {
 	  step = -1. * stepSize * log(1-Random::instance().rand());
 	}
 
-   	if (Random::instance().rand() < .5) {
+   	if (Random::instance().rand() < .5) { // normal Diffusion
+	//if (Random::instance().rand() < .0) { // along magnetic field lines: North direction
+	//if (Random::instance().rand() < 1.) { //against magnetic field lines: South direction
 	  step *= -1;
 	}
 
