@@ -22,18 +22,27 @@ SET(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS} -ggdb -fno-omit-frame-pointer")
 if (NOT CMAKE_BUILD_TYPE)
         set(CMAKE_BUILD_TYPE Release)
 endif(NOT CMAKE_BUILD_TYPE)
-MESSAGE(STATUS "Build Type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}")
 
 
 # ----------------------------------------------------------------------------
 # Version info from Git
 # ----------------------------------------------------------------------------
-# Embeded version info to the binaries for easier debugging 
-# and with the reproducibility in mind
-include(GetGitRevisionDescription)
-get_git_head_revision(GIT_REFSPEC GIT_SHA1)
-git_describe(GIT_DESC)
+# Embed the information about CRPropa version into the binaries for easier 
+# debugging with a reproducibility in mind
+option(ENABLE_GIT "If CRPropa source is inside of a git version control" ON)
 
+if(ENABLE_GIT)
+    include(GetGitRevisionDescription)
+    get_git_head_revision(GIT_REFSPEC GIT_SHA1)
+    git_describe(GIT_DESC)
+else(ENABLE_GIT)
+    set(GIT_REFSPEC "")
+    set(GIT_SHA1 "")
+    set(GIT_DESC "v3.0.beta1")
+endif(ENABLE_GIT)
+
+message(STATUS "CRPropa version: ${GIT_DESC}")
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/Version.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/src/Version.cpp" @ONLY)
 list(APPEND CRPROPA_EXTRA_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/src/Version.cpp")
 
@@ -81,16 +90,25 @@ add_subdirectory(libs/EleCa)
 list(APPEND CRPROPA_EXTRA_LIBRARIES eleca)
 list(APPEND CRPROPA_EXTRA_INCLUDES libs/EleCa/include)
 
-
 # GlacticMagneticLenses
 option(ENABLE_GALACTICMAGETICLENS "Galactic Magnetic Lens" ON)
+option(INSTALL_EIGEN "Install provided EIGEN headers" OFF)
+SET(EIGEN_PATH  "" CACHE STRING "Use EIGEN from this path instead of the version shipped with CRPropa")
 SET(WITH_GALACTIC_LENSES FALSE)
 if (ENABLE_GALACTICMAGETICLENS)
 	SET(WITH_GALACTIC_LENSES TRUE)
 
-	# Eigen redux (provided)
-	list(APPEND CRPROPA_EXTRA_INCLUDES libs/eigen3)
-	install(DIRECTORY libs/eigen3/ DESTINATION include)
+	if(EIGEN_PATH)
+		message("Using EIGEN from " ${EIGEN_PATH})
+		list(APPEND CRPROPA_EXTRA_INCLUDES ${EIGEN_PATH})
+	else(EIGEN_PATH)
+		# Eigen redux (provided)
+		message("Using provided EIGEN")
+		list(APPEND CRPROPA_EXTRA_INCLUDES libs/eigen3)
+	endif(EIGEN_PATH)
+	if(INSTALL_EIGEN)
+		install(DIRECTORY libs/eigen3/ DESTINATION include)
+	endif(INSTALL_EIGEN)
 
 	# healpix redux (provided)
 	add_subdirectory(libs/healpix_base)
@@ -169,6 +187,20 @@ if(QUIMBY_FOUND)
 	list(APPEND CRPROPA_SWIG_DEFINES -I${QUIMBY_INCLUDE_DIR})
 endif(QUIMBY_FOUND)
 
+
+# SAGA (optinal for AMR grids) 
+find_package(SAGA)
+if(SAGA_FOUND)
+	list(APPEND CRPROPA_EXTRA_INCLUDES ${SAGA_INCLUDE_DIR})
+	list(APPEND CRPROPA_EXTRA_LIBRARIES ${SAGA_LIBRARY})
+	add_definitions (-DCRPROPA_HAVE_SAGA)
+	list(APPEND CRPROPA_SWIG_DEFINES -DCRPROPA_HAVE_SAGA)
+	list(APPEND CRPROPA_SWIG_DEFINES -I${SAGA_INCLUDE_DIR}/../python)
+	list(APPEND CRPROPA_SWIG_DEFINES -I${SAGA_INCLUDE_DIR})
+endif(SAGA_FOUND)
+
+
+
 # muparser (optional for genercic source spectra)
 find_package(muParser)
 if(MUPARSER_FOUND)
@@ -192,7 +224,7 @@ endif(ZLIB_FOUND)
 # ----------------------------------------------------------------------------
 # Downloading data files (interaction data, masses, decay data)
 # ----------------------------------------------------------------------------
-#Needed fo compilation without internet connection
+# Needed fo compilation without internet connection
 option(DISABLE_DOWNLOAD "Disable download of data files" OFF)
 
 if(DISABLE_DOWNLOAD)
@@ -204,24 +236,19 @@ else(DISABLE_DOWNLOAD)
 
 	function(GET_DATA)
 	    message("Downloading from crpropa.desy.de ~ 60 MB")
-	    set(DATA_FILE ${CMAKE_BINARY_DIR}/data.tar.gz)
 
 	    if(APPLE)
 		execute_process(COMMAND curl -o ${DATA_FILE} ${DATA_URL})
 	    else()
 	    	execute_process(COMMAND wget ${DATA_URL} -O ${DATA_FILE} --no-check-certificate)
 	    endif()
-
-
-	    message("Unpacking to CRPropa3/data\n")
-	    file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/data)
-	    execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzf ${DATA_FILE} WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/data)
 	endfunction(GET_DATA)
 
 	message("\nSearching for data archive")
 	find_file(DATA_FILE data.tar.gz ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR})
 	if(DATA_FILE STREQUAL "DATA_FILE-NOTFOUND")
 	    message("File not found: data.tar.gz")
+	    set(DATA_FILE ${CMAKE_BINARY_DIR}/data.tar.gz)
 	    GET_DATA()
 	else()
 	    message("File found: " ${DATA_FILE})
@@ -241,6 +268,10 @@ else(DISABLE_DOWNLOAD)
 	        GET_DATA()
 	    endif()
 	endif()
+
+	message("Unpacking to CRPropa3/data\n")
+	file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/data)
+	execute_process(COMMAND ${CMAKE_COMMAND} -E tar xzf ${DATA_FILE} WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/data)
 endif(DISABLE_DOWNLOAD)
 
 # ----------------------------------------------------------------------------
@@ -302,9 +333,17 @@ target_link_libraries(crpropa-xmlrun crpropa)
 # ----------------------------------------------------------------------------
 option(ENABLE_PYTHON "Create python library via SWIG" ON)
 if(ENABLE_PYTHON)
-	FIND_PACKAGE(SWIG REQUIRED)
+    FIND_PACKAGE(SWIG REQUIRED)
 	include(python/Python.cmake)
 	include_directories(${PYTHON_INCLUDE_PATH})
+
+    # use SWIG's builtin (maybe should be abandoned if everything will be tested and working with -builtin)
+    option(ENABLE_SWIG_BUILTIN "Use SWIG's -builtin option" OFF)
+    if(ENABLE_SWIG_BUILTIN)
+        set(BUILTIN "-builtin")
+    else(ENABLE_SWIG_BUILTIN)
+        set(BUILTIN "")
+    endif(ENABLE_SWIG_BUILTIN)
 
 	# tries to import numpy
 	execute_process(COMMAND ${PYTHON_EXECUTABLE} "${CMAKE_CURRENT_SOURCE_DIR}/python/checkNumpy.py" OUTPUT_VARIABLE numpyIncludePath)
@@ -318,10 +357,11 @@ if(ENABLE_PYTHON)
 	endif()
 
 	file(GLOB_RECURSE CRPROPA_INCLUDES include/*.h)
+	file(GLOB_RECURSE CRPROPA_SWIG_INPUTS python/*.i)
 	set_source_files_properties( ${CMAKE_CURRENT_BINARY_DIR}/crpropa_wrap.cxx PROPERTIES GENERATED true )
 	add_custom_command( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/crpropa_wrap.cxx
-		COMMAND swig -builtin -c++ -python -I${CMAKE_SOURCE_DIR}/include ${CRPROPA_SWIG_DEFINES} -o ${CMAKE_CURRENT_BINARY_DIR}/crpropa_wrap.cxx -outdir ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_SOURCE_DIR}/python/crpropa.i
-		DEPENDS ${CMAKE_SOURCE_DIR}/python/crpropa.i ${CRPROPA_INCLUDES} )
+        COMMAND swig ${BUILTIN} -c++ -python -I${CMAKE_SOURCE_DIR}/include ${CRPROPA_SWIG_DEFINES} -o ${CMAKE_CURRENT_BINARY_DIR}/crpropa_wrap.cxx -outdir ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_SOURCE_DIR}/python/crpropa${BUILTIN}.i
+				DEPENDS ${CRPROPA_SWIG_INPUTS} ${CRPROPA_INCLUDES} )
 
 	add_library(crpropa-swig MODULE ${CMAKE_CURRENT_BINARY_DIR}/crpropa_wrap.cxx)
 	set_target_properties(crpropa-swig PROPERTIES PREFIX "")
@@ -379,10 +419,6 @@ if(ENABLE_TESTING)
 	target_link_libraries(testBreakCondition crpropa gtest gtest_main pthread)
 	add_test(testBreakCondition testBreakCondition)
 
-	add_executable(testOutput test/testOutput.cpp)
-	target_link_libraries(testOutput crpropa gtest gtest_main pthread)
-	add_test(testOutput testOutput)
-
 	add_executable(testInteraction test/testInteraction.cpp)
 	target_link_libraries(testInteraction crpropa gtest gtest_main pthread)
 	add_test(testInteraction testInteraction)
@@ -403,6 +439,9 @@ if(ENABLE_TESTING)
 
 		CONFIGURE_FILE(test/testDiffusion.py.in testDiffusion.py)
 		ADD_TEST(testDiffusion ${PYTHON_EXECUTABLE} testDiffusion.py)
+		
+		CONFIGURE_FILE(test/testSimulationExecution.py.in testSimulationExecution.py)
+		ADD_TEST(testSimulationExecution ${PYTHON_EXECUTABLE} testSimulationExecution.py)
 	endif(ENABLE_PYTHON)
 endif(ENABLE_TESTING)
 

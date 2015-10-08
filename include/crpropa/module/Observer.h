@@ -39,20 +39,21 @@ public:
 class Observer: public Module {
 	std::string flagKey;
 	std::string flagValue;
-
 private:
 	std::vector<ref_ptr<ObserverFeature> > features;
 	ref_ptr<Module> detectionAction;
+	bool clone;
 	bool makeInactive;
 public:
 	Observer();
 	void add(ObserverFeature *feature);
-	void onDetection(Module *action);
+	void onDetection(Module *action, bool clone = false);
 	void beginRun();
 	void endRun();
 	void process(Candidate *candidate) const;
 	std::string getDescription() const;
 	void setFlag(std::string key, std::string value);
+	void setDeactivateOnDetection(bool deactivate);
 };
 
 /**
@@ -65,6 +66,21 @@ private:
 	double radius;
 public:
 	ObserverSmallSphere(Vector3d center = Vector3d(0.), double radius = 0);
+	DetectionState checkDetection(Candidate *candidate) const;
+	std::string getDescription() const;
+};
+
+/**
+ @class ObserverTracking
+ @brief Tracks particles inside a sphere
+ */
+class ObserverTracking: public ObserverFeature {
+private:
+	Vector3d center;
+	double radius;
+    double stepSize;
+public:
+	ObserverTracking(Vector3d center, double radius, double stepSize = 0);
 	DetectionState checkDetection(Candidate *candidate) const;
 	std::string getDescription() const;
 };
@@ -138,6 +154,17 @@ public:
 	DetectionState checkDetection(Candidate *candidate) const;
 	std::string getDescription() const;
 };
+
+/**
+ @class ObserverElectronVeto
+ @brief Veto for electrons and positrons
+ */
+class ObserverElectronVeto: public ObserverFeature {
+public:
+	DetectionState checkDetection(Candidate *candidate) const;
+	std::string getDescription() const;
+};
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // old observer scheme

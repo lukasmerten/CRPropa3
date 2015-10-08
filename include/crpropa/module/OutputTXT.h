@@ -7,38 +7,43 @@
 #include <fstream>
 #include <bitset>
 
-
 namespace crpropa {
 
-enum OutputColumn {
-	TrajectoryLengthColumn,
-	RedshiftColumn,
-	CurrentIdColumn,
-	CurrentEnergyColumn,
-	CurrentPositionColumn,
-	CurrentDirectionColumn,
-	SourceIdColumn,
-	SourceEnergyColumn,
-	SourcePositionColumn,
-	SourceDirectionColumn,
-	CreatedIdColumn,
-	CreatedEnergyColumn,
-	CreatedPositionColumn,
-	CreatedDirectionColumn
-};
-
+/**
+ @class TextOutput
+ @brief Configurable plain text output for cosmic ray information.
+ */
 class TextOutput: public Module {
 protected:
 	double lengthScale, energyScale;
 	std::ostream *out;
 	std::ofstream outfile;
 	std::bitset<64> fields;
-        bool oneDimensional;
+	std::string filename;
+	bool oneDimensional;
 public:
+	enum OutputColumn {
+		TrajectoryLengthColumn,
+		RedshiftColumn,
+		CurrentIdColumn,
+		CurrentEnergyColumn,
+		CurrentPositionColumn,
+		CurrentDirectionColumn,
+		SourceIdColumn,
+		SourceEnergyColumn,
+		SourcePositionColumn,
+		SourceDirectionColumn,
+		CreatedIdColumn,
+		CreatedEnergyColumn,
+		CreatedPositionColumn,
+		CreatedDirectionColumn
+	};
+
 	TextOutput();
 	~TextOutput();
 	TextOutput(std::ostream &out);
 	TextOutput(const std::string &filename);
+	TextOutput(const std::string &filename, const std::string &outputtype);
 	void setEnergyScale(double scale);
 	void setLengthScale(double scale);
 
@@ -47,17 +52,20 @@ public:
 	void disable(OutputColumn field);
 	void enableAll();
 	void disableAll();
+	void resetFile();
 	void printHeader();
-        void set1D(bool value);
+	void set1D(bool value);
 	void process(Candidate *candidate) const;
-	void endRun();	
-        
-        void gzip();
+	void endRun();
+
+	void gzip();
+
+	std::string getDescription() const;
 };
 
 /**
  @class TrajectoryOutput
- @brief Saves trajectories to plain text file.
+ @brief Deprecated! Saves trajectories to plain text file.
  */
 class TrajectoryOutput: public Module {
 	mutable std::ofstream fout;
@@ -70,7 +78,7 @@ public:
 
 /**
  @class ConditionalOutput
- @brief Saves particles with a given property to a plain text file.
+ @brief Deprecated! Saves particles with a given property to a plain text file.
  */
 class ConditionalOutput: public Module {
 	mutable std::ofstream fout;
@@ -84,7 +92,7 @@ public:
 
 /**
  @class TrajectoryOutput1D
- @brief Saves 1D trajectories to plain text file.
+ @brief Deprecated! Saves 1D trajectories to plain text file.
  */
 class TrajectoryOutput1D: public Module {
 	mutable std::ofstream fout;
@@ -97,7 +105,7 @@ public:
 
 /**
  @class EventOutput1D
- @brief Records particles that are inactive and have the property 'Detected' to a plain text file.
+ @brief Deprecated! Records particles that are inactive and have the property 'Detected' to a plain text file.
  */
 class EventOutput1D: public Module {
 	mutable std::ofstream fout;

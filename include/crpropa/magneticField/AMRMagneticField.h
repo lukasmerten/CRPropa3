@@ -37,7 +37,6 @@ private:
     double cfMagneticField;
 
 public:        
-  
     AMRMagneticField(saga::ref_ptr<saga::MagneticField> field_, double convLength, double convDensity, double convMagneticField)            
     {
         field = field_;
@@ -48,25 +47,16 @@ public:
 
     Vector3d getField(const Vector3d &position) const {
 
-        double x = position.x/cfLength;
-        double y = position.y/cfLength;
-        double z = position.z/cfLength;
+        double x = position.x / cfLength;
+        double y = position.y / cfLength;
+        double z = position.z / cfLength;
 
-        std::vector<double> b;
-        #ifdef _OPENMP
-            #pragma omp critical 
-            {    
-		        b = field->getField(x, y, z);
-            }
-        #else 
-            b = field->getField(x, y, z);
-        #endif
+        std::vector<double> b = field->getField(x, y, z);
+        Vector3d B;
+        B.setXYZ(b[0], b[1], b[2]);
+        B = B * cfMagneticField;
 
-        for(int i=0; i<3; i++)
-            b[i]*=cfMagneticField;
-        //std::cout << x*cfLength/Mpc << "  " << y*cfLength/Mpc << "  " << z*cfLength/Mpc << "  ||   " << b[0] << " " << b[1] << "  " << b[0] << std::endl;
-
-		return Vector3d(b[0], b[1], b[2]) * tesla;   
+		return B;   
     }
 
 };

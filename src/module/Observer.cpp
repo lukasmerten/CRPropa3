@@ -7,7 +7,7 @@ namespace crpropa {
 
 // Observer -------------------------------------------------------------------
 Observer::Observer() :
-		makeInactive(true) {
+		makeInactive(true), clone(false) {
 }
 
 void Observer::add(ObserverFeature *feature) {
@@ -27,8 +27,9 @@ void Observer::endRun() {
 		detectionAction->endRun();
 }
 
-void Observer::onDetection(Module *action) {
+void Observer::onDetection(Module *action, bool clone_) {
 	detectionAction = action;
+	clone = clone_;
 }
 
 void Observer::process(Candidate *candidate) const {
@@ -47,8 +48,12 @@ void Observer::process(Candidate *candidate) const {
 			features[i]->onDetection(candidate);
 		}
 
-		if (detectionAction.valid())
-			detectionAction->process(candidate);
+		if (detectionAction.valid()) {
+			if (clone)
+				detectionAction->process(candidate->clone(false));
+			else
+				detectionAction->process(candidate);
+		}
 
 		if (!flagKey.empty())
 			candidate->setProperty(flagKey, flagValue);
@@ -71,9 +76,13 @@ std::string Observer::getDescription() const {
 	ss << "    Flag: '" << flagKey << "' -> '" << flagValue << "'\n";
 	ss << "    MakeInactive: " << (makeInactive ? "yes\n" : "no\n");
 	if (detectionAction.valid())
-		ss << "    Action: " << detectionAction->getDescription();
+		ss << "    Action: " << detectionAction->getDescription() << ", clone: " << (clone ? "yes" : "no");
 
 	return ss.str();
+}
+
+void Observer::setDeactivateOnDetection(bool deactivate) {
+	makeInactive = deactivate;
 }
 
 // ObserverFeature ------------------------------------------------------------
@@ -126,6 +135,41 @@ std::string ObserverSmallSphere::getDescription() const {
 	ss << "ObserverSmallSphere: ";
 	ss << "center = " << center / Mpc << " Mpc, ";
 	ss << "radius = " << radius / Mpc << " Mpc";
+	return ss.str();
+}
+
+// ObserverTracking --------------------------------------------------------
+ObserverTracking::ObserverTracking(Vector3d center, double radius, double stepSize) :
+		center(center), radius(radius), stepSize(stepSize) {
+	if (stepSize == 0) {
+		stepSize = radius / 10.;
+	}
+}
+
+DetectionState ObserverTracking::checkDetection(Candidate *candidate) const {
+	// current distance to observer sphere center
+	double d = (candidate->current.getPosition() - center).getR();
+
+	// no detection if outside of observer sphere
+	if (d > radius) {
+		// conservatively limit next step to prevent overshooting
+		candidate->limitNextStep(fabs(d - radius));
+
+		return NOTHING;
+	} else {
+		// limit next step
+		candidate->limitNextStep(stepSize);
+
+		return DETECTED;
+	}
+}
+
+std::string ObserverTracking::getDescription() const {
+	std::stringstream ss;
+	ss << "ObserverTracking: ";
+	ss << "center = " << center / Mpc << " Mpc, ";
+	ss << "radius = " << radius / Mpc << " Mpc";
+	ss << "stepSize = " << stepSize / Mpc << " Mpc";
 	return ss.str();
 }
 
@@ -212,7 +256,7 @@ std::string ObserverNucleusVeto::getDescription() const {
 
 // ObserverNeutrinoVeto -------------------------------------------------------
 DetectionState ObserverNeutrinoVeto::checkDetection(Candidate *c) const {
-	int id = fabs(c->current.getId());
+	int id = abs(c->current.getId());
 	if ((id == 12) or (id == 14) or (id == 16))
 		return VETO;
 	return NOTHING;
@@ -232,6 +276,19 @@ DetectionState ObserverPhotonVeto::checkDetection(Candidate *c) const {
 std::string ObserverPhotonVeto::getDescription() const {
 	return "ObserverPhotonVeto";
 }
+
+// ObserverElectronVeto ---------------------------------------------------------
+DetectionState ObserverElectronVeto::checkDetection(Candidate *c) const {
+	if (abs(c->current.getId()) == 11)
+		return VETO;
+	return NOTHING;
+}
+
+std::string ObserverElectronVeto::getDescription() const {
+	return "ObserverElectronVeto";
+}
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 
