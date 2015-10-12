@@ -178,9 +178,9 @@
 %include "crpropa/ModuleList.h"
 
 %include "crpropa/Version.h"
-%pythoncode %{
-    __version__ = g_GIT_DESC 
-%}
+//%pythoncode %{
+//    __version__ = g_GIT_DESC 
+//%}
 %include "2_headers.i"
 
 /* 3. Pretty print for Python */
