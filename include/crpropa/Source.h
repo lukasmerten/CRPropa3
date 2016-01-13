@@ -325,7 +325,7 @@ public:
 
 /**
  @class SourceUniformRedshift
- @brief Uniform redshift distribution (time of emission)
+ @brief Random redshift (time of emission) from uniform distribution
  */
 class SourceUniformRedshift: public SourceFeature {
 	double zmin, zmax;
@@ -333,6 +333,17 @@ public:
 	SourceUniformRedshift(double zmin, double zmax);
 	void prepareCandidate(Candidate &candidate) const;
 	void setDescription();
+};
+
+/**
+ @class SourceRedshiftEvolution
+ @brief Random redshift (time of emission) from (1+z)^m distribution
+ */
+class SourceRedshiftEvolution: public SourceFeature {
+	double zmin, zmax, m;
+public:
+	SourceRedshiftEvolution(double m, double zmin, double zmax);
+	void prepareCandidate(Candidate &candidate) const;
 };
 
 /**
@@ -355,24 +366,35 @@ public:
  @brief Multiple nuclei with energies described by an expression string
  */
 class SourceGenericComposition: public SourceFeature {
+public:
 	struct Nucleus {
 		int id;
 		std::vector<double> cdf;
 	};
 
+	SourceGenericComposition(double Emin, double Emax, std::string expression, size_t bins = 1024);
+	void add(int id, double abundance);
+	void add(int A, int Z, double abundance);
+	void prepareParticle(ParticleState &particle) const;
+	void setDescription();
+	
+    const std::vector<double> *getNucleusCDF(int id) const {
+        for (size_t i = 0; i<nuclei.size(); i++)
+            if (nuclei[i].id == id)
+            	return &nuclei[i].cdf;
+    	return 0;
+    }	
+
+protected:
+
 	double Emin, Emax;
-	size_t steps;
+	size_t bins;
 	std::string expression;
 	std::vector<double> energy;
 
 	std::vector<Nucleus> nuclei;
 	std::vector<double> cdf;
-public:
-	SourceGenericComposition(double Emin, double Emax, std::string expression, size_t steps = 1024);
-	void add(int id, double abundance);
-	void add(int A, int Z, double abundance);
-	void prepareParticle(ParticleState &particle) const;
-	void setDescription();
+
 };
 #endif
 

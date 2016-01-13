@@ -1824,7 +1824,7 @@ C  avoid infinite looping
           if(itry.gt.50) then
             print *,' gamma_h: more than 50 internal rejections,'
             print *,' called with ip1,ip2,Ecm,Imode:',ip1,ip2,Ecm,Imode
-            PAUSE
+C            PAUSE
             ifbad = 1
             return
           endif
@@ -16393,7 +16393,7 @@ c**********************
 
        if (plinterpol.eq.0.D0) then
         print*,'interpolation not sucessful !'
-        pause
+C        pause
        endif
 
        END
@@ -16819,8 +16819,15 @@ c      gammap = E0/pm
 c      betap = sqrt(1.D0-1.D0/gammap/gammap)
       Pp = sqrt(E0*E0-pm*pm)
       theta = ((pm*pm-s)/2.D0/eps+E0)/Pp
-      if (abs(theta).gt.1.D0) STOP
-      theta = acos(theta)*180.D0/pi 
+      if (theta.gt.1.D0) then
+         print*,'sophiaevent: theta > 1.D0: ', theta
+         theta = 0.D0
+      else if (theta.lt.-1.D0) then
+         print*,'sophiaevent: theta < -1.D0: ', theta
+         theta = 180.D0
+      else
+          theta = acos(theta)*180.D0/pi 
+      endif
 
       call eventgen(L0,E0,eps,theta,Imode)
 
