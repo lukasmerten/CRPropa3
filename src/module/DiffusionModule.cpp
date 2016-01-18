@@ -6,12 +6,17 @@
 #include <cmath>
 #include <cstdlib>
 #include <vector>
+#include <stdexcept>
+
 
 using namespace crpropa;
 	
-DiffusionModule::DiffusionModule(ref_ptr<MagneticField> field, std::string m) :
+DiffusionModule::DiffusionModule(ref_ptr<MagneticField> field, std::string m, 
+				 double minStep, double maxStep) :
   field(field), mode(m)
 {
+setMaximumStep(maxStep);
+setMinimumStep(minStep);
   try {
     InputCheck(mode);
   }
@@ -32,24 +37,26 @@ void DiffusionModule::process(Candidate *candidate) const {
 	double rig = E / C;
 	double DifCoeff = 6.1e24 * pow((rig / 4.0e9), 1./3.);
 	double stepSize;
-	double step;
+	//double step;
+	double step = clip(candidate->getNextStep(), 1*parsec, 10*kpc);
 
 // rectilinear propagation for neutral particles step = 
 	if (C == 0) {
 		Vector3d dir = current.getDirection();
-		current.setPosition(xi + dir * 100 * parsec);
-		candidate->setCurrentStep(100 * parsec);
-		candidate->setNextStep(100 * parsec);
+		current.setPosition(xi + dir * step);
+		candidate->setCurrentStep(fabs(step));
+		candidate->setNextStep(maxStep);
 		return;
 	}
 
 // Diffusion for charged particles 
 	if(mode == singleString){ // single step distribution
 	  stepSize = 2. / c_light * DifCoeff;
-	  step = stepSize;
+	  //step = stepSize;
 	}else if(mode == logString){ // log-step distribution
-	  stepSize = 1. / c_light * DifCoeff;
-	  step = -1. * stepSize * log(1-Random::instance().rand());
+	  //stepSize = 1. / c_light * DifCoeff;
+	  //step = -1. * stepSize * log(1-Random::instance().rand());
+	  stepSize =  -1. * 1. / c_light * DifCoeff * log(1-Random::instance().rand());
 	}
 
    	if (Random::instance().rand() < .5) { // normal Diffusion
@@ -69,15 +76,17 @@ void DiffusionModule::process(Candidate *candidate) const {
 // rectilinear propagation if magnetic field is B=0
 	if(step3d.getR2() != step3d.getR2()){
 	  Vector3d dir = current.getDirection();
-	  current.setPosition(xi + dir * stepSize);
+	  //current.setPosition(xi + dir * stepSize);
+	  current.setPosition(xi + dir * step);
 	  current.setDirection(dir);
-	  candidate->setCurrentStep(stepSize);
+	  candidate->setCurrentStep(fabs(step));
 	  candidate->setNextStep(stepSize);
 	  return;
 	}
 
 	current.setPosition(xi + step3d);
-	candidate->setCurrentStep(stepSize);
+	//candidate->setCurrentStep(stepSize);
+	candidate->setCurrentStep(fabs(step));
 	candidate->setNextStep(stepSize);
 	current.setDirection(step3d);
 }
@@ -98,6 +107,27 @@ void DiffusionModule::InputCheck(std::string c) {
       }
 }
 
+void DiffusionModule::setMinimumStep(double min) {
+	if (min < 0)
+		throw std::runtime_error("PropagationCK: minStep < 0 ");
+	if (min > maxStep)
+		throw std::runtime_error("PropagationCK: minStep > maxStep");
+	minStep = min;
+}
+
+void DiffusionModule::setMaximumStep(double max) {
+	if (max < minStep)
+		throw std::runtime_error("PropagationCK: maxStep < minStep");
+	maxStep = max;
+}
+
+double DiffusionModule::getMinimumStep() const {
+	return minStep;
+}
+
+double  DiffusionModule::getMaximumStep() const {
+	return maxStep;
+}
 
 
 // Alternative Algorithm should be tested for efficiency
