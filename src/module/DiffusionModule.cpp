@@ -32,13 +32,13 @@ void DiffusionModule::process(Candidate *candidate) const {
 	candidate->previous = current;
 	
 	Vector3d xi = current.getPosition();
-	double E = candidate->current.getEnergy();
-	double C = candidate->current.getCharge();
+	double E = current.getEnergy();
+	double C = current.getCharge();
 	double rig = E / C;
 	double DifCoeff = 6.1e24 * pow((rig / 4.0e9), 1./3.);
 	double stepSize;
 	//double step;
-	double step = clip(candidate->getNextStep(), 1*parsec, 10*kpc);
+	double step = clip(candidate->getNextStep(), minStep, maxStep);
 
 // rectilinear propagation for neutral particles step = 
 	if (C == 0) {
@@ -77,10 +77,10 @@ void DiffusionModule::process(Candidate *candidate) const {
 	if(step3d.getR2() != step3d.getR2()){
 	  Vector3d dir = current.getDirection();
 	  //current.setPosition(xi + dir * stepSize);
-	  current.setPosition(xi + dir * step);
+	  current.setPosition(xi + dir * fabs(step));
 	  current.setDirection(dir);
 	  candidate->setCurrentStep(fabs(step));
-	  candidate->setNextStep(stepSize);
+	  candidate->setNextStep(maxStep);
 	  return;
 	}
 
