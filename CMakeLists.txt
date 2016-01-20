@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 2.8.12)
 project(CRPropa Fortran C CXX)
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
@@ -211,6 +211,28 @@ if(ZLIB_FOUND)
 endif(ZLIB_FOUND)
 
 # ----------------------------------------------------------------------------
+# Fix Apple RPATH
+# ----------------------------------------------------------------------------
+set(CMAKE_MACOSX_RPATH 1)
+option(USE_ABSOLUTE_RPATH "Add absolute rpath to all libraries and executables" ON)
+if(APPLE OR USE_ABSOLUTE_RPATH)
+    set(CMAKE_SKIP_BUILD_RPATH  FALSE)
+    set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+    set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+    set(ABSOLUTE_RPATH "${CMAKE_INSTALL_PREFIX}/lib${LIB_SUFFIX}")
+    if(NOT IS_ABSOLUTE ${ABSOLUTE_RPATH})
+        set(ABSOLUTE_RPATH ${CMAKE_BINARY_DIR}/${ABSOLUTE_RPATH})
+    endif()
+
+    list(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${ABSOLUTE_RPATH}" isSystemDir)
+    if("${isSystemDir}" STREQUAL "-1")
+        message(STATUS "Use absolute RPATH ${ABSOLUTE_RPATH}")
+        set(CMAKE_INSTALL_RPATH "${ABSOLUTE_RPATH}")
+    endif("${isSystemDir}" STREQUAL "-1")
+endif()
+
+
+# ----------------------------------------------------------------------------
 # Downloading data files (interaction data, masses, decay data)
 # ----------------------------------------------------------------------------
 # Needed fo compilation without internet connection
@@ -225,9 +247,8 @@ else(DISABLE_DOWNLOAD)
 
 	function(GET_DATA)
 	    message("Downloading from crpropa.desy.de ~ 60 MB")
-
 	    if(APPLE)
-		execute_process(COMMAND curl -o ${DATA_FILE} ${DATA_URL})
+		execute_process(COMMAND curl -o ${DATA_FILE} ${DATA_URL} --insecure)
 	    else()
 	    	execute_process(COMMAND wget ${DATA_URL} -O ${DATA_FILE} --no-check-certificate)
 	    endif()
@@ -243,7 +264,7 @@ else(DISABLE_DOWNLOAD)
 	    message("File found: " ${DATA_FILE})
 	    if(APPLE)
 	    	execute_process(COMMAND md5 ${DATA_FILE} OUTPUT_VARIABLE MD5SUM)
-	    	string(LENGTH ${MD5SUM} MD5LENGTH)
+		string(LENGTH ${MD5SUM} MD5LENGTH)
 	    	MATH(EXPR START "${MD5LENGTH} - 33")
 	    	string(SUBSTRING ${MD5SUM} ${START} 32 MD5SUM)
 	    else()
@@ -353,14 +374,16 @@ if(ENABLE_PYTHON)
         COMMAND swig ${BUILTIN} -c++ -python -I${CMAKE_SOURCE_DIR}/include ${CRPROPA_SWIG_DEFINES} -o ${CMAKE_CURRENT_BINARY_DIR}/crpropa_wrap.cxx -outdir ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_SOURCE_DIR}/python/crpropa${BUILTIN}.i
 				DEPENDS ${CRPROPA_SWIG_INPUTS} ${CRPROPA_INCLUDES} )
 
+
 	add_library(crpropa-swig MODULE ${CMAKE_CURRENT_BINARY_DIR}/crpropa_wrap.cxx)
 	set_target_properties(crpropa-swig PROPERTIES PREFIX "")
 	set_target_properties(crpropa-swig PROPERTIES OUTPUT_NAME "_crpropa")
 	target_link_libraries(crpropa-swig crpropa ${PYTHON_LIBRARIES})
 
-	install(DIRECTORY "${CMAKE_SOURCE_DIR}/python/crpropa" DESTINATION ${PYTHON_SITE_PACKAGES})
-	install(FILES "${CMAKE_CURRENT_BINARY_DIR}/crpropa.py" DESTINATION ${PYTHON_SITE_PACKAGES}/crpropa)
-	install(TARGETS crpropa-swig LIBRARY DESTINATION ${PYTHON_SITE_PACKAGES}/crpropa)
+
+	install(DIRECTORY "${CMAKE_SOURCE_DIR}/python/crpropa" DESTINATION "${PYTHON_SITE_PACKAGES}")
+	install(FILES "${CMAKE_CURRENT_BINARY_DIR}/crpropa.py" DESTINATION "${PYTHON_SITE_PACKAGES}/crpropa")
+	install(TARGETS crpropa-swig LIBRARY DESTINATION "${PYTHON_SITE_PACKAGES}/crpropa")
 endif(ENABLE_PYTHON)
 
 
