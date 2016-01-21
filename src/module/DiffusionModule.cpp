@@ -37,10 +37,10 @@ void DiffusionModule::process(Candidate *candidate) const {
 	double rig = E / C;
 	double DifCoeff = 6.1e24 * pow((rig / 4.0e9), 1./3.);
 	double stepSize;
-	//double step;
+	
 	double step = clip(candidate->getNextStep(), minStep, maxStep);
 
-// rectilinear propagation for neutral particles step = 
+// rectilinear propagation for neutral particles
 	if (C == 0) {
 		Vector3d dir = current.getDirection();
 		current.setPosition(xi + dir * step);
