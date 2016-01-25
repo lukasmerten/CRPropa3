@@ -49,7 +49,8 @@ void DiffusionModule::process(Candidate *candidate) const {
 		return;
 	}
 
-// Diffusion for charged particles 
+// Diffusion for charged particles
+	/*
 	if(mode == singleString){ // single step distribution
 	  stepSize = 2. / c_light * DifCoeff;
 	  //step = stepSize;
@@ -64,12 +65,16 @@ void DiffusionModule::process(Candidate *candidate) const {
 	//if (Random::instance().rand() < 1.) { //against magnetic field lines: South direction
 	  step *= -1;
 	}
+	*/
+	double t = step / c_light;
+	double B_xx = pow(2 * DifCoeff, 0.5);
 
+	double propStep = B_xx * Random::instance().randNorm() * pow(t, 0.5);
 // runge kutta step
-    	Vector3d k1 = step * field->getField(xi).getUnitVector();
-	Vector3d k2 = step * field->getField(xi + k1/2.0).getUnitVector();
-	Vector3d k3 = step * field->getField(xi + k2/2.0).getUnitVector();
-	Vector3d k4 = step * field->getField(xi + k3).getUnitVector();
+    	Vector3d k1 = propStep * field->getField(xi).getUnitVector();
+	Vector3d k2 = propStep * field->getField(xi + k1/2.0).getUnitVector();
+	Vector3d k3 = propStep * field->getField(xi + k2/2.0).getUnitVector();
+	Vector3d k4 = propStep * field->getField(xi + k3).getUnitVector();
     
 	Vector3d step3d = (k1 + 2.0*(k2+k3) + k4)/6.; 
 
@@ -86,8 +91,10 @@ void DiffusionModule::process(Candidate *candidate) const {
 
 	current.setPosition(xi + step3d);
 	//candidate->setCurrentStep(stepSize);
-	candidate->setCurrentStep(fabs(step));
-	candidate->setNextStep(stepSize);
+	//candidate->setCurrentStep(fabs(step));
+	candidate->setCurrentStep(t * c_light);
+	//candidate->setNextStep(stepSize);
+	candidate->setNextStep(maxStep);
 	current.setDirection(step3d);
 }
 
