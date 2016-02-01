@@ -10,20 +10,109 @@
 
 
 using namespace crpropa;
-	
-DiffusionModule::DiffusionModule(ref_ptr<MagneticField> field, std::string m, 
+
+const double cash_karp_a[] = { 0., 0., 0., 0., 0., 0., 1. / 5., 0., 0., 0., 0.,
+		0., 3. / 40., 9. / 40., 0., 0., 0., 0., 3. / 10., -9. / 10., 6. / 5.,
+		0., 0., 0., -11. / 54., 5. / 2., -70. / 27., 35. / 27., 0., 0., 1631.
+				/ 55296., 175. / 512., 575. / 13824., 44275. / 110592., 253.
+				/ 4096., 0. };
+
+const double cash_karp_b[] = { 37. / 378., 0, 250. / 621., 125. / 594., 0., 512.
+		/ 1771. };
+
+const double cash_karp_bs[] = { 2825. / 27648., 0., 18575. / 48384., 13525.
+		/ 55296., 277. / 14336., 1. / 4. };
+
+
+void DiffusionModule::tryStep(const Y &y, Y &out, Y &error, double h,
+		ParticleState &particle, double z) const {
+	std::vector<Y> k;
+	k.reserve(6);
+
+	out = y;
+	error = Y(0);
+
+	// calculate the sum of b_i * k_i
+	for (size_t i = 0; i < 6; i++) {
+
+		Y y_n = y;
+		for (size_t j = 0; j < i; j++)
+			y_n += k[j] * a[i * 6 + j] * h;
+
+		// update k_i
+		k[i] = dYdt(y_n, particle, z);
+
+		out.x += k[i].x * b[i] * h;
+		out.u = (out.x - y.x) / h / c_light;
+		std::cout <<"out = " << out.u <<"\n";
+		error.x += k[i].x * (b[i] - bs[i]) * h;
+		error.u = error.x / h / c_light;
+		//error += k[i] * (b[i] - b[i]) * h;
+	}
+}
+	/* // Runge Kutta 4th-order
+const double cash_karp_a[] = {0., 0., 0., 0., 0.,
+			      1./2., 1./2., 0., 0., 0.,
+			      1./2., 0., 1./2., 0., 0.,
+			      1., 0., 0., 1., 0.};
+
+const double cash_karp_b[] = {1./6., 1./3., 1./3., 1./6. };
+
+const double cash_karp_bs[] = {1./6., 1./3., 1./3., 1./6. };
+
+
+void DiffusionModule::tryStep(const Y &y, Y &out, Y &error, double h,
+		ParticleState &particle, double z) const {
+	std::vector<Y> k;
+	k.reserve(4);
+
+	out = y;
+	error = Y(0);
+
+	// calculate the sum of b_i * k_i
+	for (size_t i = 0; i < 4; i++) {
+
+		Y y_n = y;
+		for (size_t j = 0; j < i; j++)
+			y_n += k[j] * a[i * 5 + j] * h;
+
+		// update k_i
+		k[i] = dYdt(y_n, particle, z);
+
+		out += k[i] * b[i] * h;
+		//std::cout <<"out = " << out.x / kpc <<"\n";
+		error += k[i] * (b[i] - bs[i]) * h;
+	}
+	}*/
+
+DiffusionModule::Y DiffusionModule::dYdt(const Y &y, ParticleState &p, double z) const {
+	// normalize direction vector to prevent numerical losses
+	Vector3d B(0, 0, 0);
+	try {
+		B = field->getField(y.x, z);
+	} catch (std::exception &e) {
+		std::cerr << "PropagationCK: Exception in getField." << std::endl;
+		std::cerr << e.what() << std::endl;
+	}
+	Vector3d velocity = B.getUnitVector() * c_light;
+	// change direction according to magnetic field line
+	Vector3d dudt = B.getUnitVector();
+	return Y(velocity, dudt);
+}
+
+
+DiffusionModule::DiffusionModule(ref_ptr<MagneticField> field, double tolerance, 
 				 double minStep, double maxStep) :
-  field(field), mode(m)
+  field(field)
 {
-setMaximumStep(maxStep);
-setMinimumStep(minStep);
-  try {
-    InputCheck(mode);
-  }
-  catch (std::invalid_argument& e) {
-    std::cerr << "Error in DiffusionModule:" << std::endl;
-    std::terminate();
-  }
+  setMaximumStep(maxStep);
+  setMinimumStep(minStep);
+  setTolerance(tolerance);
+  
+// load CK-coefficients
+  a.assign(cash_karp_a, cash_karp_a + 36);
+  b.assign(cash_karp_b, cash_karp_b + 6);
+  bs.assign(cash_karp_bs, cash_karp_bs + 6);
 }
 
 void DiffusionModule::process(Candidate *candidate) const {
@@ -31,53 +120,46 @@ void DiffusionModule::process(Candidate *candidate) const {
 	ParticleState &current = candidate->current;
 	candidate->previous = current;
 	
-	Vector3d xi = current.getPosition();
-	double E = current.getEnergy();
-	double C = current.getCharge();
-	double rig = E / C;
-	double DifCoeff = 6.1e24 * pow((rig / 4.0e9), 1./3.);
-	double stepSize;
-	
 	double step = clip(candidate->getNextStep(), minStep, maxStep);
-
-// rectilinear propagation for neutral particles
-	if (C == 0) {
+	
+	// rectilinear propagation for neutral particles
+	if (current.getCharge() == 0) {
 		Vector3d dir = current.getDirection();
-		current.setPosition(xi + dir * step);
+		current.setPosition(current.getPosition() + dir * step);
 		candidate->setCurrentStep(fabs(step));
 		candidate->setNextStep(maxStep);
 		return;
 	}
-
-// Diffusion for charged particles
-	/*
-	if(mode == singleString){ // single step distribution
-	  stepSize = 2. / c_light * DifCoeff;
-	  //step = stepSize;
-	}else if(mode == logString){ // log-step distribution
-	  //stepSize = 1. / c_light * DifCoeff;
-	  //step = -1. * stepSize * log(1-Random::instance().rand());
-	  stepSize =  -1. * 1. / c_light * DifCoeff * log(1-Random::instance().rand());
-	}
-
-   	if (Random::instance().rand() < .5) { // normal Diffusion
-	//if (Random::instance().rand() < .0) { // along magnetic field lines: North direction
-	//if (Random::instance().rand() < 1.) { //against magnetic field lines: South direction
-	  step *= -1;
-	}
-	*/
-	double t = step / c_light;
+	
+	Y yIn(current.getPosition(), current.getDirection());
+	Y yOut, yErr;
+	double h = step / c_light;
+	//std::cout <<"h = " << h / 31557600.<<"\n";
+	double hTry, r;
+	double z = candidate->getRedshift();
+	
+	double rig = current.getEnergy() / current.getCharge();
+	double DifCoeff = 6.1e24 * pow((rig / 4.0e9), 1./3.);
 	double B_xx = pow(2 * DifCoeff, 0.5);
+	double propStep = B_xx * Random::instance().randNorm();
+	do {
+		hTry = h;
+		std::cout <<"hTry = " << hTry / 31557600. <<"\n";
+		std::cout <<"propStep = " << propStep*pow(hTry, 0.5) / kpc <<"\n";
+		tryStep(yIn, yOut, yErr, (propStep*pow(hTry, 0.5))/c_light, current, z);
+		// determine absolute direction error relative to tolerance
+		//r = yErr.u.getR() / tolerance;
+		r = yErr.u.getR() / tolerance;
+		std::cout <<"yErr.x " << yErr.x.getR() / kpc <<"\n";
+		std::cout <<"r = " << r <<"\n";
+		// new step size to keep the error close to the tolerance
+		h *= 0.95 * pow(r, -0.2);
+		// limit change of new step size
+		h = clip(h, 0.1 * hTry, 5 * hTry);
 
-	double propStep = B_xx * Random::instance().randNorm() * pow(t, 0.5);
-// runge kutta step
-    	Vector3d k1 = propStep * field->getField(xi).getUnitVector();
-	Vector3d k2 = propStep * field->getField(xi + k1/2.0).getUnitVector();
-	Vector3d k3 = propStep * field->getField(xi + k2/2.0).getUnitVector();
-	Vector3d k4 = propStep * field->getField(xi + k3).getUnitVector();
-    
-	Vector3d step3d = (k1 + 2.0*(k2+k3) + k4)/6.; 
-
+	} while (r > 1 && h > minStep / c_light);
+		//}while (1 == 2);
+	/*
 // rectilinear propagation if magnetic field is B=0
 	if(step3d.getR2() != step3d.getR2()){
 	  Vector3d dir = current.getDirection();
@@ -88,31 +170,13 @@ void DiffusionModule::process(Candidate *candidate) const {
 	  candidate->setNextStep(maxStep);
 	  return;
 	}
-
-	current.setPosition(xi + step3d);
-	//candidate->setCurrentStep(stepSize);
-	//candidate->setCurrentStep(fabs(step));
-	candidate->setCurrentStep(t * c_light);
-	//candidate->setNextStep(stepSize);
-	candidate->setNextStep(maxStep);
-	current.setDirection(step3d);
+	*/
+	current.setPosition(yOut.x);
+	current.setDirection(yOut.u.getUnitVector());
+	candidate->setCurrentStep(hTry * c_light);
+	candidate->setNextStep(h * c_light);
 }
 
-void DiffusionModule::InputCheck(std::string c) {
-      check = c;
-      singleString = "single";
-      logString = "log";
-      
-      if (c == "single"){
-	return;
-      }
-      if (c == "log"){
-	return;
-      }
-      else{
-	throw std::invalid_argument("Invalid second keyword: Use \"single\" or \"log\" instead");
-      }
-}
 
 void DiffusionModule::setMinimumStep(double min) {
 	if (min < 0)
@@ -128,39 +192,22 @@ void DiffusionModule::setMaximumStep(double max) {
 	maxStep = max;
 }
 
+void DiffusionModule::setTolerance(double tol) {
+	if ((tol > 1) or (tol < 0))
+		throw std::runtime_error(
+				"PropagationCK: target error not in range 0-1");
+	tolerance = tol;
+}
+
 double DiffusionModule::getMinimumStep() const {
 	return minStep;
 }
 
-double  DiffusionModule::getMaximumStep() const {
+double DiffusionModule::getMaximumStep() const {
 	return maxStep;
 }
 
+double DiffusionModule::getTolerance() const {
+	return tolerance;
+}
 
-// Alternative Algorithm should be tested for efficiency
- /*
-    // Runge Kutta 3/8
-    Vector3d xi = candidate->current.getPosition();
-    Vector3d k1 = step * field->getField(xi).getUnitVector();
-    Vector3d k2 = step * field->getField(xi + k1/3.0).getUnitVector();
-    Vector3d k3 = step * field->getField(xi - k1/3.0 + k2).getUnitVector();
-    Vector3d k4 = step * field->getField(xi + k1 -k2 + k3).getUnitVector();
-    
-    // ToDo normalize
-    Vector3d step3d = (k1 + 3.0*(k2+k3) + k4)/8.; 
-    
-    // Runge Kutta Fehlberg
-    Vector3d xi = candidate->current.getPosition();
-    Vector3d k1 = step * field->getField(xi).getUnitVector();
-    Vector3d k2 = step * field->getField(xi + k1/4.0).getUnitVector();
-    Vector3d k3 = step * field->getField(xi + k1*3./32. + k2*9./32.).getUnitVector();
-    Vector3d k4 = step * field->getField(xi + k1*1932./2197. - k2*7200./2197. + k3*7296./2197.).getUnitVector();
-    Vector3d k5 = step * field->getField(xi + k1*439./216. - k2*8. + k3*3680./513. - k4*845./4104.).getUnitVector();
-    Vector3d k6 = step * field->getField(xi - k1*8./27. +k2*2. - k3*3544./2565. + k4*1859./4104. - k5*11./40.).getUnitVector();
-
-    
-    // 5-th order
-    //Vector3d step3d = (k1*16./135. + k3*6656./12825. + k4*28561./56430. - k5*9./50. + k6*2./55.);
-    // 4-th order
-    Vector3d step3d = (k1*25./216. + k3*1408./2565. + k4*2197./4104. - k5*1./5.);
-    */

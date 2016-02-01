@@ -31,7 +31,8 @@ class DiffusionOneDirection(unittest.TestCase):
     # magnetic field
     ConstMagVec = Vector3d(0*nG,0*nG,1*nG)
     BField = UniformMagneticField(ConstMagVec)
-    Dif = DiffusionModule(BField, 'log')
+    Dif = DiffusionModule(BField)
+    maxTra = MaximumTrajectoryLength(50 *kpc)
     msg1 = "Note that this is a statistical test. It might fail by chance with a probabilty O(0.01)! You should rerun the test to make sure there is a bug."
     msg2 = "Note that this is a statistical test. It might fail by chance with a probabilty O(0.001)! You should rerun the test to make sure there is a bug."
 
@@ -47,6 +48,7 @@ class DiffusionOneDirection(unittest.TestCase):
             c.current.setId(nucleusId(1,1))
             c.current.setEnergy(E)
             while c.getTrajectoryLength() < 50 * kpc:
+                self.maxTra.process(c)
                 self.Dif.process(c)
             self.zPosition10.append(c.current.getPosition().z)
         A2, Level, significant = anderson(self.zPosition10, 'norm')
@@ -59,6 +61,7 @@ class DiffusionOneDirection(unittest.TestCase):
             c.current.setId(nucleusId(1,1))
             c.current.setEnergy(E)
             while c.getTrajectoryLength() < 50 * kpc:
+                self.maxTra.process(c)
                 self.Dif.process(c)
             self.zPosition1000.append(c.current.getPosition().z)
         A2, Level, significant = anderson(self.zPosition1000, 'norm')
@@ -71,6 +74,7 @@ class DiffusionOneDirection(unittest.TestCase):
             c.current.setId(nucleusId(1,1))
             c.current.setEnergy(E)
             while c.getTrajectoryLength() < 50 * kpc:
+                self.maxTra.process(c)
                 self.Dif.process(c)
             self.zPosition100000.append(c.current.getPosition().z)
         A2, Level, significant = anderson(self.zPosition100000, 'norm')

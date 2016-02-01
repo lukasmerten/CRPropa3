@@ -10,30 +10,58 @@
 
 namespace crpropa {
 class DiffusionModule : public Module{
-	private:
-	    ref_ptr<MagneticField> field;
-	    std::string mode;
-	    std::string singleString;
-	    std::string logString;
-	    std::string check;
-
+public:
+        class Y {
 	public:
-	    DiffusionModule(ref_ptr<crpropa::MagneticField> field, std::string mode, 
-			    double minStep = 0.1*parsec, double maxStep = 10 * kpc);
+		Vector3d x, u; /*< phase-point: position and direction */
 
-	    void process(crpropa::Candidate *candidate) const;
-	    void InputCheck(std::string check);
+		Y() {
+		}
 
-	private:
+		Y(const Vector3d &x, const Vector3d &u) :
+				x(x), u(u) {
+		}
+
+		Y(double f) :
+				x(Vector3d(f, f, f)), u(Vector3d(f, f, f)) {
+		}
+
+		Y operator *(double f) const {
+			return Y(x * f, u * f);
+		}
+
+		Y &operator +=(const Y &y) {
+			x += y.x;
+			u += y.u;
+			return *this;
+		}
+	};
+
+private:
+	    std::vector<double> a, b, bs; /*< Cash-Karp coefficients */
+	    ref_ptr<MagneticField> field;
 	    double minStep;
 	    double maxStep;
+	    double tolerance;
 
-	public:
-	void setMinimumStep(double minStep);
-	void setMaximumStep(double maxStep);
+public:
+	    DiffusionModule(ref_ptr<crpropa::MagneticField> field, double tolerance = 1e-4, 
+			    double minStep = 50*parsec, double maxStep = 10 * kpc);
 
-	double getMinimumStep() const;
-	double getMaximumStep() const;
+	    void process(crpropa::Candidate *candidate) const;
+
+	    Y dYdt(const Y &y, ParticleState &p, double z) const;
+
+	    void tryStep(const Y &y, Y &out, Y &error, double t,
+			ParticleState &p, double z) const;
+	   
+	    void setMinimumStep(double minStep);
+	    void setMaximumStep(double maxStep);
+	    void setTolerance(double tolerance);
+
+	    double getMinimumStep() const;
+	    double getMaximumStep() const;
+	    double getTolerance() const;
 
 
 }; 
