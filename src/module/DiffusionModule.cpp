@@ -44,11 +44,15 @@ void DiffusionModule::tryStep(const Y &y, Y &out, Y &error, double h,
 
 		out.x += k[i].x * b[i] * h;
 		out.u = (out.x - y.x) / h / c_light;
-		std::cout <<"out = " << out.u <<"\n";
+	        //std::cout <<"out = " << out.x <<"\n";
 		error.x += k[i].x * (b[i] - bs[i]) * h;
-		error.u = error.x / h / c_light;
+		error.u = error.x / fabs(h) / c_light;
 		//error += k[i] * (b[i] - b[i]) * h;
 	}
+	std::cout <<"out.x = " << out.x <<"\n";
+	std::cout <<"out.u = " << out.u <<"\n";
+
+
 }
 	/* // Runge Kutta 4th-order
 const double cash_karp_a[] = {0., 0., 0., 0., 0.,
@@ -144,14 +148,14 @@ void DiffusionModule::process(Candidate *candidate) const {
 	double propStep = B_xx * Random::instance().randNorm();
 	do {
 		hTry = h;
-		std::cout <<"hTry = " << hTry / 31557600. <<"\n";
-		std::cout <<"propStep = " << propStep*pow(hTry, 0.5) / kpc <<"\n";
+		//std::cout <<"hTry = " << hTry / 31557600. <<"\n";
+		//std::cout <<"propStep = " << propStep*pow(hTry, 0.5) / kpc <<"\n";
 		tryStep(yIn, yOut, yErr, (propStep*pow(hTry, 0.5))/c_light, current, z);
 		// determine absolute direction error relative to tolerance
 		//r = yErr.u.getR() / tolerance;
 		r = yErr.u.getR() / tolerance;
-		std::cout <<"yErr.x " << yErr.x.getR() / kpc <<"\n";
-		std::cout <<"r = " << r <<"\n";
+		//std::cout <<"yErr.x " << yErr.x.getR() / kpc <<"\n";
+		//std::cout <<"r = " << r <<"\n";
 		// new step size to keep the error close to the tolerance
 		h *= 0.95 * pow(r, -0.2);
 		// limit change of new step size
