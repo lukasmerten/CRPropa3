@@ -9,5 +9,7 @@ data/*
 data-tools/*
 data.tar.gz
 
+libs/*
+
 *.png
 *.pyc

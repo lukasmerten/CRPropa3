@@ -43,14 +43,14 @@ void DiffusionModule::tryStep(const Y &y, Y &out, Y &error, double h,
 		k[i] = dYdt(y_n, particle, z);
 
 		out.x += k[i].x * b[i] * h;
-		out.u = (out.x - y.x) / h / c_light;
+		out.u = (out.x - y.x) / fabs(h) / c_light;
 	        //std::cout <<"out = " << out.x <<"\n";
 		error.x += k[i].x * (b[i] - bs[i]) * h;
 		error.u = error.x / fabs(h) / c_light;
 		//error += k[i] * (b[i] - b[i]) * h;
 	}
-	std::cout <<"out.x = " << out.x <<"\n";
-	std::cout <<"out.u = " << out.u <<"\n";
+	//std::cout <<"error.x = " << error.x <<"\n";
+	//std::cout <<"error.u = " << error.u.getR() <<"\n";
 
 
 }
