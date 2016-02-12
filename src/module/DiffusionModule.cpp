@@ -80,7 +80,8 @@ void DiffusionModule::process(Candidate *candidate) const {
 	  current.setPosition(xi + dir * fabs(step));
 	  current.setDirection(dir);
 	  candidate->setCurrentStep(fabs(step));
-	  candidate->setNextStep(maxStep);
+	  //candidate->setNextStep(maxStep);
+	  candidate->setNextStep(fabs(step));
 	  return;
 	}
 
