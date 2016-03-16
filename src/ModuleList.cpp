@@ -91,7 +91,7 @@ void ModuleList::run(candidate_vector_t &candidates, bool recursive) {
 
 	beginRun();  // call beginRun in all modules
 
-#pragma omp parallel for schedule(static, 1000)
+#pragma omp parallel for schedule(static, 100)
 	for (size_t i = 0; i < count; i++) {
 		if (g_cancel_signal_flag)
 			continue;
@@ -132,7 +132,7 @@ void ModuleList::run(SourceInterface *source, size_t count, bool recursive) {
 
 	beginRun();  // call beginRun in all modules
 
-#pragma omp parallel for schedule(static, 1000)
+#pragma omp parallel for schedule(static, 100)
 	for (size_t i = 0; i < count; i++) {
 		if (g_cancel_signal_flag)
 			continue;
