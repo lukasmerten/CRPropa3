@@ -144,15 +144,21 @@ void DiffusionModule::process(Candidate *candidate) const {
 	
 	double rig = current.getEnergy() / current.getCharge();
 	double DifCoeff = 6.1e24 * pow((rig / 4.0e9), 1./3.);
-	double B_xx = pow(2 * DifCoeff, 0.5);
-	double propStep = B_xx * Random::instance().randNorm();
+	// only parallel diffusion
+	//double B_xx = pow(2 * DifCoeff, 0.5); 
+	// parallel and perpendicular diffusion
+	double kappa = 1.;
+	double B_par = pow(2  * DifCoeff, 0.5);
+	double B_perp = pow(2 * kappa * DifCoeff, 0.5);
+	
+	//double propStep = B_xx * Random::instance().randNorm();
+	double propStep = B_par * Random::instance().randNorm();
 	do {
 		hTry = h;
 		//std::cout <<"hTry = " << hTry / 31557600. <<"\n";
 		//std::cout <<"propStep = " << propStep*pow(hTry, 0.5) / kpc <<"\n";
 		tryStep(yIn, yOut, yErr, (propStep*pow(hTry, 0.5))/c_light, current, z);
 		// determine absolute direction error relative to tolerance
-		//r = yErr.u.getR() / tolerance;
 		r = yErr.u.getR() / tolerance;
 		//std::cout <<"yErr.x " << yErr.x.getR() / kpc <<"\n";
 		//std::cout <<"r = " << r <<"\n";
@@ -175,8 +181,11 @@ void DiffusionModule::process(Candidate *candidate) const {
 	  return;
 	}
 	*/
-	current.setPosition(yOut.x);
-	current.setDirection(yOut.u.getUnitVector());
+        Vector3d Pos = yOut.x + ( yOut.u.cross( Random::instance().randVector() ) ).getUnitVector() * B_perp *pow(hTry, 0.5) * Random::instance().randNorm();
+	//Vector3d Pos = yIn.x + Random::instance().randVector() * B_perp;
+	current.setPosition(Pos);
+	// current.setDirection(yOut.u.getUnitVector());
+	current.setDirection((yOut.x-yIn.x).getUnitVector());
 	candidate->setCurrentStep(hTry * c_light);
 	candidate->setNextStep(h * c_light);
 }
