@@ -43,10 +43,11 @@ private:
 	    double minStep;
 	    double maxStep;
 	    double tolerance;
+	    double kappa;
 
 public:
 	    DiffusionModule(ref_ptr<crpropa::MagneticField> field, double tolerance = 1e-4, 
-			    double minStep = 50*parsec, double maxStep = 10 * kpc);
+			    double minStep = 50*parsec, double maxStep = 10 * kpc, double kappa = 0.);
 
 	    void process(crpropa::Candidate *candidate) const;
 
@@ -58,10 +59,12 @@ public:
 	    void setMinimumStep(double minStep);
 	    void setMaximumStep(double maxStep);
 	    void setTolerance(double tolerance);
+	    void setKappa(double kappa);
 
 	    double getMinimumStep() const;
 	    double getMaximumStep() const;
 	    double getTolerance() const;
+	    double getKappa() const;
 
 
 }; 

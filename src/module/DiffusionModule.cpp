@@ -106,12 +106,13 @@ DiffusionModule::Y DiffusionModule::dYdt(const Y &y, ParticleState &p, double z)
 
 
 DiffusionModule::DiffusionModule(ref_ptr<MagneticField> field, double tolerance, 
-				 double minStep, double maxStep) :
+				 double minStep, double maxStep, double kappa) :
   field(field)
 {
   setMaximumStep(maxStep);
   setMinimumStep(minStep);
   setTolerance(tolerance);
+  setKappa(kappa);
   
 // load CK-coefficients
   a.assign(cash_karp_a, cash_karp_a + 36);
@@ -147,7 +148,6 @@ void DiffusionModule::process(Candidate *candidate) const {
 	// only parallel diffusion
 	//double B_xx = pow(2 * DifCoeff, 0.5); 
 	// parallel and perpendicular diffusion
-	double kappa = 1.;
 	double B_par = pow(2  * DifCoeff, 0.5);
 	double B_perp = pow(2 * kappa * DifCoeff, 0.5);
 	
@@ -193,23 +193,30 @@ void DiffusionModule::process(Candidate *candidate) const {
 
 void DiffusionModule::setMinimumStep(double min) {
 	if (min < 0)
-		throw std::runtime_error("PropagationCK: minStep < 0 ");
+		throw std::runtime_error("DiffusionModule: minStep < 0 ");
 	if (min > maxStep)
-		throw std::runtime_error("PropagationCK: minStep > maxStep");
+		throw std::runtime_error("DiffusionModule: minStep > maxStep");
 	minStep = min;
 }
 
 void DiffusionModule::setMaximumStep(double max) {
 	if (max < minStep)
-		throw std::runtime_error("PropagationCK: maxStep < minStep");
+		throw std::runtime_error("DiffusionModule: maxStep < minStep");
 	maxStep = max;
 }
 
 void DiffusionModule::setTolerance(double tol) {
 	if ((tol > 1) or (tol < 0))
 		throw std::runtime_error(
-				"PropagationCK: target error not in range 0-1");
+				"DiffusionModule: tolerance error not in range 0-1");
 	tolerance = tol;
+}
+
+void DiffusionModule::setKappa(double kap) {
+	if ((kap > 1) or (kap < 0))
+		throw std::runtime_error(
+				"DiffusionModule: ratio error not in range 0-1");
+	kappa = kap;
 }
 
 double DiffusionModule::getMinimumStep() const {
@@ -222,5 +229,9 @@ double DiffusionModule::getMaximumStep() const {
 
 double DiffusionModule::getTolerance() const {
 	return tolerance;
+}
+
+double DiffusionModule::getKappa() const {
+	return kappa;
 }
 
