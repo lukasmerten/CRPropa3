@@ -168,7 +168,6 @@ void DiffusionModule::process(Candidate *candidate) const {
 		h = clip(h, 0.1 * hTry, 5 * hTry);
 
 	} while (r > 1 && h > minStep / c_light);
-		//}while (1 == 2);
 	/*
 // rectilinear propagation if magnetic field is B=0
 	if(step3d.getR2() != step3d.getR2()){
@@ -182,7 +181,6 @@ void DiffusionModule::process(Candidate *candidate) const {
 	}
 	*/
         Vector3d Pos = yOut.x + ( yOut.u.cross( Random::instance().randVector() ) ).getUnitVector() * B_perp *pow(hTry, 0.5) * Random::instance().randNorm();
-	//Vector3d Pos = yIn.x + Random::instance().randVector() * B_perp;
 	current.setPosition(Pos);
 	// current.setDirection(yOut.u.getUnitVector());
 	current.setDirection((yOut.x-yIn.x).getUnitVector());
