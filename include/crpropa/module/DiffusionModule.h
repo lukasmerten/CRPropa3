@@ -10,32 +10,6 @@
 
 namespace crpropa {
 class DiffusionModule : public Module{
-public:
-        class Y {
-	public:
-		Vector3d x, u; /*< phase-point: position and direction */
-
-		Y() {
-		}
-
-		Y(const Vector3d &x, const Vector3d &u) :
-				x(x), u(u) {
-		}
-
-		Y(double f) :
-				x(Vector3d(f, f, f)), u(Vector3d(f, f, f)) {
-		}
-
-		Y operator *(double f) const {
-			return Y(x * f, u * f);
-		}
-
-		Y &operator +=(const Y &y) {
-			x += y.x;
-			u += y.u;
-			return *this;
-		}
-	};
 
 private:
 	    std::vector<double> a, b, bs; /*< Cash-Karp coefficients */
@@ -44,28 +18,32 @@ private:
 	    double maxStep;
 	    double tolerance;
 	    double kappa;
+	    std::vector<double> BTensor;
+	    std::vector<double> eta;
+	    
 
 public:
 	    DiffusionModule(ref_ptr<crpropa::MagneticField> field, double tolerance = 1e-4, 
 			    double minStep = 50*parsec, double maxStep = 10 * kpc, double kappa = 0.);
 
 	    void process(crpropa::Candidate *candidate) const;
-
-	    Y dYdt(const Y &y, ParticleState &p, double z) const;
-
-	    void tryStep(const Y &y, Y &out, Y &error, double t,
-			ParticleState &p, double z) const;
 	   
+	    //void calBTensor(double rigidity, std::vector<double> BT) const;
+	    void tryStep(const Vector3d &Pos, Vector3d &POut, Vector3d &DirErr, Vector3d &TVec,Vector3d &NVec,Vector3d &BVec,double &TStep, double t, double z ) const;
+
 	    void setMinimumStep(double minStep);
 	    void setMaximumStep(double maxStep);
 	    void setTolerance(double tolerance);
 	    void setKappa(double kappa);
+	    //void setBTensor(std::vector<double> V) const;
 
 	    double getMinimumStep() const;
 	    double getMaximumStep() const;
 	    double getTolerance() const;
 	    double getKappa() const;
-
+	    //std::vector<double> getBTensor() const;
+	    Vector3d TVec, NVec, BVec, PosIn, PosOut, DirOut, DirErr;
+	    double TStep, NStep, BStep;
 
 }; 
 } //namespace crpropa
