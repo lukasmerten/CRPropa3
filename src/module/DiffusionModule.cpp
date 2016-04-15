@@ -98,7 +98,7 @@ void DiffusionModule::process(Candidate *candidate) const {
 	do {
 	  hTry = h;
 	  tryStep(PosIn, PosOut, DirErr, TVec, NVec, BVec, TStep, z, hTry);
-	  r = DirErr.getR() / tolerance;
+	  r = DirErr.getR() / hTry / tolerance;
 	  h *= 0.95 * pow(r, -0.2);
 	  h = clip(h, 0.1 * hTry, 5 * hTry);
 	} while (r > 1 && h > minStep /c_light);
@@ -174,7 +174,7 @@ void DiffusionModule::tryStep(const Vector3d &PosIn, Vector3d &POut, Vector3d &D
 		//~ std::cout <<"sqrt(h)" << pow(h, 0.5)  << "\n";
 		POut += k[i] * b[i] * TStep * pow(h, 0.5);
 		//std::cout <<"Pos[i]= " << Pos[i] << '\n';
-		DirErr +=  (k[i] * (b[i] - bs[i]) * TStep * pow(h, 0.5)).getUnitVector();
+		DirErr +=  (k[i] * (b[i] - bs[i]) * TStep * pow(h, 0.5));
 		//Pos[i+1] = POut;
 		//std::cout << "Pos[i-1], Pos[i]" << Pos[i-1] << "\t" <<Pos[i]  <<"\n";
 		if (i > 0)
