@@ -9,17 +9,30 @@
 #include <crpropa/Units.h>
 
 namespace crpropa {
+
+/**
+ @class MaximumTrajectoryLength
+ @brief Deactivates the candidate beyond a maximum trajectory length
+
+ This modules deactivates the candidate at a given maximum trajectory length.
+ In that case the property ("Deactivated", module::description) is set.
+ It also limits the candidates next step size to ensure the maximum trajectory length is no exceeded.
+ */
+
+
 class DiffusionModule : public Module{
 
 private:
-	    std::vector<double> a, b, bs; /*< Cash-Karp coefficients */
+    //std::vector<double> a, b, bs; /*< Cash-Karp coefficients */
 	    ref_ptr<MagneticField> field;
 	    double minStep;
 	    double maxStep;
 	    double tolerance;
-	    double kappa;
-	    std::vector<double> BTensor;
-	    std::vector<double> eta;
+	    double kappaN;
+	    double kappaB;
+	    double alpha;
+	    double scale;
+	   
 	    
 
 public:
@@ -28,22 +41,26 @@ public:
 
 	    void process(crpropa::Candidate *candidate) const;
 	   
-	    //void calBTensor(double rigidity, std::vector<double> BT) const;
-	    void tryStep(const Vector3d &Pos, Vector3d &POut, Vector3d &DirErr, Vector3d &TVec,Vector3d &NVec,Vector3d &BVec,double &TStep, double t, double z ) const;
+	  
+	    void tryStep(const Vector3d &Pos, Vector3d &POut, Vector3d &PosErr, Vector3d &TVec,Vector3d &NVec,Vector3d &BVec, double z, double propStep ) const;
 
 	    void setMinimumStep(double minStep);
 	    void setMaximumStep(double maxStep);
 	    void setTolerance(double tolerance);
-	    void setKappa(double kappa);
-	    //void setBTensor(std::vector<double> V) const;
+	    void setKappaN(double kappa);
+	    void setKappaB(double kappa);
+	    void setAlpha(double alpha);
+	    void setScale(double Scale);
 
 	    double getMinimumStep() const;
 	    double getMaximumStep() const;
 	    double getTolerance() const;
-	    double getKappa() const;
-	    //std::vector<double> getBTensor() const;
-	    Vector3d TVec, NVec, BVec, PosIn, PosOut, DirOut, DirErr;
-	    double TStep, NStep, BStep;
+	    double getKappaN() const;
+	    double getKappaB() const;
+	    double getAlpha() const;
+	    double getScale() const;
+	    std::string getDescription() const;
 
 }; 
+
 } //namespace crpropa
