@@ -61,7 +61,7 @@ void DiffusionModule::process(Candidate *candidate) const {
 	double z = candidate->getRedshift();
 	double rig = current.getEnergy() / current.getCharge();
 
-	double DifCoeff = scale * 6.1e24 * pow((rig / 4.0e9), alpha);
+	double DifCoeff = scale * 6.1e24 * pow((std::abs(rig) / 4.0e9), alpha);
 	double BTensor[] = {0., 0., 0., 0., 0., 0., 0., 0., 0.};
 	BTensor[0] = pow( 2  * DifCoeff, 0.5);
 	BTensor[4] = pow(2 * kappaN * DifCoeff, 0.5);
@@ -98,7 +98,15 @@ void DiffusionModule::process(Candidate *candidate) const {
 	  h *= 0.95 * pow(r, -0.2);
 	  // prevent h from too strong variations
 	  h = clip(h, 0.1 * hTry, 5 * hTry);
-	} while (r > 1 && hTry > minStep / c_light);
+	} while (r > 1 && hTry > minStep / c_light && TVec.getR()==TVec.getR());
+
+	if (TVec.getR() != TVec.getR()) {
+	  Vector3d dir = current.getDirection();
+	  current.setPosition(current.getPosition() + dir * step);
+	  candidate->setCurrentStep(step);
+	  candidate->setNextStep(step);
+	  return;
+	}
 
 	Vector3d PO = PosIn + (TVec * std::abs(TStep) + NVec * NStep + BVec * BStep) * pow(hTry, 0.5);
 	
@@ -115,7 +123,7 @@ void DiffusionModule::tryStep(const Vector3d &PosIn, Vector3d &POut, Vector3d &P
 
 	Vector3d k[] = {Vector3d(0.),Vector3d(0.),Vector3d(0.),Vector3d(0.),Vector3d(0.),Vector3d(0.)};
 	Vector3d Pos[] = {Vector3d(0.),Vector3d(0.),Vector3d(0.),Vector3d(0.),Vector3d(0.),Vector3d(0.)};
-
+	std::cout << "propStep " << propStep << "\n";
 	for (size_t i = 0; i < 6; i++) {
 		Vector3d y_n = PosIn;
 		for (size_t j = 0; j < i; j++)
@@ -150,7 +158,7 @@ void DiffusionModule::tryStep(const Vector3d &PosIn, Vector3d &POut, Vector3d &P
 	
 	NVec = NVec.getUnitVector();
 	BVec = (TVec.cross(NVec)).getUnitVector();
-	
+	std::cout << "Tripod " << TVec <<", " << NVec <<", " << BVec <<"\n";
 }
 
 
@@ -235,7 +243,7 @@ double DiffusionModule::getScale() const {
 std::string DiffusionModule::getDescription() const {
 	std::stringstream s;
 	s << "minStep: " << minStep / kpc  << " kpc, ";
-	s << "maxStep: " << minStep / kpc  << " kpc, ";
+	s << "maxStep: " << maxStep / kpc  << " kpc, ";
 	s << "tolerance: " << tolerance << "\n";
 	
 	if (kappaN != 0. or kappaB != 0.) {

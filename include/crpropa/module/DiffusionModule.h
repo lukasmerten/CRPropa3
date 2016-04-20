@@ -11,12 +11,9 @@
 namespace crpropa {
 
 /**
- @class MaximumTrajectoryLength
- @brief Deactivates the candidate beyond a maximum trajectory length
+ @class DiffusionModule
+ @brief Propagates pseudo-particles as tracers of the phase space density.
 
- This modules deactivates the candidate at a given maximum trajectory length.
- In that case the property ("Deactivated", module::description) is set.
- It also limits the candidates next step size to ensure the maximum trajectory length is no exceeded.
  */
 
 
