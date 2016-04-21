@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <vector>
 #include <stdexcept>
+#include <fstream>
 
 
 using namespace crpropa;
@@ -27,16 +28,21 @@ const double bs[] = { 2825. / 27648., 0., 18575. / 48384., 13525.
 
 
 DiffusionModule::DiffusionModule(ref_ptr<MagneticField> field, double tolerance, 
-				 double minStep, double maxStep, double kappa) :
+				 double minStep, double maxStep, double epsilon) :
   field(field)
 {
   setMaximumStep(maxStep);
   setMinimumStep(minStep);
   setTolerance(tolerance);
-  setKappaN(kappa);
-  setKappaB(kappa);
+  setEpsilonN(epsilon);
+  setEpsilonB(epsilon);
   setScale(1.);
   setAlpha(1./3.);
+
+  std::fstream f;
+  f.open("Ortho1.txt", std::ios::out);
+  f << "T.N, T.B, B.N, x, y, z" <<std::endl;
+  f.close();
 
 }
 
@@ -64,8 +70,8 @@ void DiffusionModule::process(Candidate *candidate) const {
 	double DifCoeff = scale * 6.1e24 * pow((std::abs(rig) / 4.0e9), alpha);
 	double BTensor[] = {0., 0., 0., 0., 0., 0., 0., 0., 0.};
 	BTensor[0] = pow( 2  * DifCoeff, 0.5);
-	BTensor[4] = pow(2 * kappaN * DifCoeff, 0.5);
-	BTensor[8] = pow(2 * kappaB * DifCoeff, 0.5);
+	BTensor[4] = pow(2 * epsilonN * DifCoeff, 0.5);
+	BTensor[8] = pow(2 * epsilonB * DifCoeff, 0.5);
 	
 	double eta[] = {0., 0., 0.};
 	for(size_t i=0; i < 3; i++) {
@@ -85,7 +91,7 @@ void DiffusionModule::process(Candidate *candidate) const {
 	Vector3d PosOut = Vector3d(0.);
 	Vector3d DirOut = Vector3d(0.);
 	Vector3d PosErr = Vector3d(0.);
-	 
+
 
 	do {
 	  hTry = h;
@@ -110,7 +116,13 @@ void DiffusionModule::process(Candidate *candidate) const {
 
 	Vector3d PO = PosIn + (TVec * std::abs(TStep) + NVec * NStep + BVec * BStep) * pow(hTry, 0.5);
 	
-
+	std::fstream f;
+	f.open("Ortho1.txt", std::ios::app);
+	f << TVec.dot(NVec) << ", " << TVec.dot(BVec) << ", " << BVec.dot(NVec) <<", ";
+	f << PosIn.x/kpc <<", " << PosIn.y/kpc <<", " << PosIn.z/kpc  << std::endl;
+	f.close();
+	
+	
 	DirOut = (PO -PosIn).getUnitVector();
 	current.setPosition(PO);
 	current.setDirection(DirOut);
@@ -123,7 +135,7 @@ void DiffusionModule::tryStep(const Vector3d &PosIn, Vector3d &POut, Vector3d &P
 
 	Vector3d k[] = {Vector3d(0.),Vector3d(0.),Vector3d(0.),Vector3d(0.),Vector3d(0.),Vector3d(0.)};
 	Vector3d Pos[] = {Vector3d(0.),Vector3d(0.),Vector3d(0.),Vector3d(0.),Vector3d(0.),Vector3d(0.)};
-	std::cout << "propStep " << propStep << "\n";
+	//std::cout << "propStep " << propStep << "\n";
 	for (size_t i = 0; i < 6; i++) {
 		Vector3d y_n = PosIn;
 		for (size_t j = 0; j < i; j++)
@@ -158,7 +170,7 @@ void DiffusionModule::tryStep(const Vector3d &PosIn, Vector3d &POut, Vector3d &P
 	
 	NVec = NVec.getUnitVector();
 	BVec = (TVec.cross(NVec)).getUnitVector();
-	std::cout << "Tripod " << TVec <<", " << NVec <<", " << BVec <<"\n";
+	//std::cout << "Tripod " << TVec <<", " << NVec <<", " << BVec <<"\n";
 }
 
 
@@ -183,18 +195,18 @@ void DiffusionModule::setTolerance(double tol) {
 	tolerance = tol;
 }
 
-void DiffusionModule::setKappaN(double kap) {
-	if ((kap > 1) or (kap < 0))
+void DiffusionModule::setEpsilonN(double e) {
+	if ((e > 1) or (e < 0))
 		throw std::runtime_error(
-				"DiffusionModule: kappaN not in range 0-1");
-	kappaN = kap;
+				"DiffusionModule: epsilonN not in range 0-1");
+	epsilonN = e;
 }
 
-void DiffusionModule::setKappaB(double kap) {
-	if ((kap > 1) or (kap < 0))
+void DiffusionModule::setEpsilonB(double e) {
+	if ((e > 1) or (e < 0))
 		throw std::runtime_error(
-				"DiffusionModule: kappaB not in range 0-1");
-	kappaB = kap;
+				"DiffusionModule: epsilonB not in range 0-1");
+	epsilonB = e;
 }
 
 void DiffusionModule::setAlpha(double a) {
@@ -211,7 +223,6 @@ void DiffusionModule::setScale(double s) {
 	scale = s;
 }
 
-
 double DiffusionModule::getMinimumStep() const {
 	return minStep;
 }
@@ -224,12 +235,12 @@ double DiffusionModule::getTolerance() const {
 	return tolerance;
 }
 
-double DiffusionModule::getKappaN() const {
-	return kappaN;
+double DiffusionModule::getEpsilonN() const {
+	return epsilonN;
 }
 
-double DiffusionModule::getKappaB() const {
-	return kappaB;
+double DiffusionModule::getEpsilonB() const {
+	return epsilonB;
 }
 
 double DiffusionModule::getAlpha() const {
@@ -240,15 +251,17 @@ double DiffusionModule::getScale() const {
 	return scale;
 }
 
+
+
 std::string DiffusionModule::getDescription() const {
 	std::stringstream s;
 	s << "minStep: " << minStep / kpc  << " kpc, ";
 	s << "maxStep: " << maxStep / kpc  << " kpc, ";
 	s << "tolerance: " << tolerance << "\n";
 	
-	if (kappaN != 0. or kappaB != 0.) {
-	  s << "kappaN: " << kappaN << ", ";
-	  s << "kappaB: " << kappaB << "\n";
+	if (epsilonN != 0. or epsilonB != 0.) {
+	  s << "epsilonN: " << epsilonN << ", ";
+	  s << "epsilonB: " << epsilonB << "\n";
 	  }
 	
 	if (alpha != 1./3.) {

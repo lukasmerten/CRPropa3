@@ -25,16 +25,15 @@ private:
 	    double minStep;
 	    double maxStep;
 	    double tolerance;
-	    double kappaN;
-	    double kappaB;
+	    double epsilonN;
+	    double epsilonB;
 	    double alpha;
-	    double scale;
-	   
+	    double scale;	   
 	    
 
 public:
 	    DiffusionModule(ref_ptr<crpropa::MagneticField> field, double tolerance = 1e-4, 
-			    double minStep = 50*parsec, double maxStep = 10 * kpc, double kappa = 0.);
+			    double minStep = 10*parsec, double maxStep = 1 * kpc, double epsilon = 0.1);
 
 	    void process(crpropa::Candidate *candidate) const;
 	   
@@ -44,16 +43,16 @@ public:
 	    void setMinimumStep(double minStep);
 	    void setMaximumStep(double maxStep);
 	    void setTolerance(double tolerance);
-	    void setKappaN(double kappa);
-	    void setKappaB(double kappa);
+	    void setEpsilonN(double kappa);
+	    void setEpsilonB(double kappa);
 	    void setAlpha(double alpha);
 	    void setScale(double Scale);
 
 	    double getMinimumStep() const;
 	    double getMaximumStep() const;
 	    double getTolerance() const;
-	    double getKappaN() const;
-	    double getKappaB() const;
+	    double getEpsilonN() const;
+	    double getEpsilonB() const;
 	    double getAlpha() const;
 	    double getScale() const;
 	    std::string getDescription() const;
