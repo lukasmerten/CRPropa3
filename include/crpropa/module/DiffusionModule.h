@@ -25,8 +25,7 @@ private:
 	    double minStep;
 	    double maxStep;
 	    double tolerance;
-	    double epsilonN;
-	    double epsilonB;
+	    double epsilon;
 	    double alpha;
 	    double scale;	   
 	    
@@ -43,16 +42,14 @@ public:
 	    void setMinimumStep(double minStep);
 	    void setMaximumStep(double maxStep);
 	    void setTolerance(double tolerance);
-	    void setEpsilonN(double kappa);
-	    void setEpsilonB(double kappa);
+	    void setEpsilon(double kappa);
 	    void setAlpha(double alpha);
 	    void setScale(double Scale);
 
 	    double getMinimumStep() const;
 	    double getMaximumStep() const;
 	    double getTolerance() const;
-	    double getEpsilonN() const;
-	    double getEpsilonB() const;
+	    double getEpsilon() const;
 	    double getAlpha() const;
 	    double getScale() const;
 	    std::string getDescription() const;

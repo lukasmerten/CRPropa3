@@ -7,8 +7,6 @@
 #include <cstdlib>
 #include <vector>
 #include <stdexcept>
-#include <fstream>
-
 
 using namespace crpropa;
 
@@ -34,15 +32,9 @@ DiffusionModule::DiffusionModule(ref_ptr<MagneticField> field, double tolerance,
   setMaximumStep(maxStep);
   setMinimumStep(minStep);
   setTolerance(tolerance);
-  setEpsilonN(epsilon);
-  setEpsilonB(epsilon);
+  setEpsilon(epsilon);
   setScale(1.);
   setAlpha(1./3.);
-
-  std::fstream f;
-  f.open("Ortho1.txt", std::ios::out);
-  f << "T.N, T.B, B.N, x, y, z" <<std::endl;
-  f.close();
 
 }
 
@@ -70,8 +62,8 @@ void DiffusionModule::process(Candidate *candidate) const {
 	double DifCoeff = scale * 6.1e24 * pow((std::abs(rig) / 4.0e9), alpha);
 	double BTensor[] = {0., 0., 0., 0., 0., 0., 0., 0., 0.};
 	BTensor[0] = pow( 2  * DifCoeff, 0.5);
-	BTensor[4] = pow(2 * epsilonN * DifCoeff, 0.5);
-	BTensor[8] = pow(2 * epsilonB * DifCoeff, 0.5);
+	BTensor[4] = pow(2 * epsilon * DifCoeff, 0.5);
+	BTensor[8] = pow(2 * epsilon * DifCoeff, 0.5);
 	
 	double eta[] = {0., 0., 0.};
 	for(size_t i=0; i < 3; i++) {
@@ -105,7 +97,8 @@ void DiffusionModule::process(Candidate *candidate) const {
 	  // prevent h from too strong variations
 	  h = clip(h, 0.1 * hTry, 5 * hTry);
 	} while (r > 1 && hTry > minStep / c_light && TVec.getR()==TVec.getR());
-
+	
+	// Exception: Rectilinear propagation in case of veanishing magnetic field.
 	if (TVec.getR() != TVec.getR()) {
 	  Vector3d dir = current.getDirection();
 	  current.setPosition(current.getPosition() + dir * step);
@@ -113,14 +106,8 @@ void DiffusionModule::process(Candidate *candidate) const {
 	  candidate->setNextStep(step);
 	  return;
 	}
-
+	// Integration of the SDE with a Mayorama Euler Method
 	Vector3d PO = PosIn + (TVec * std::abs(TStep) + NVec * NStep + BVec * BStep) * pow(hTry, 0.5);
-	
-	std::fstream f;
-	f.open("Ortho1.txt", std::ios::app);
-	f << TVec.dot(NVec) << ", " << TVec.dot(BVec) << ", " << BVec.dot(NVec) <<", ";
-	f << PosIn.x/kpc <<", " << PosIn.y/kpc <<", " << PosIn.z/kpc  << std::endl;
-	f.close();
 	
 	
 	DirOut = (PO -PosIn).getUnitVector();
@@ -135,18 +122,18 @@ void DiffusionModule::tryStep(const Vector3d &PosIn, Vector3d &POut, Vector3d &P
 
 	Vector3d k[] = {Vector3d(0.),Vector3d(0.),Vector3d(0.),Vector3d(0.),Vector3d(0.),Vector3d(0.)};
 	Vector3d Pos[] = {Vector3d(0.),Vector3d(0.),Vector3d(0.),Vector3d(0.),Vector3d(0.),Vector3d(0.)};
-	//std::cout << "propStep " << propStep << "\n";
 	for (size_t i = 0; i < 6; i++) {
 		Vector3d y_n = PosIn;
 		for (size_t j = 0; j < i; j++)
 		  y_n += k[j] * a[i * 6 + j] * propStep;
 		Pos[i] = y_n;
 		
-		// update k_i
+		// update k_i = direction of the regular magnetic mean field
 		Vector3d BField(0.);
 		try {
 		  BField = field->getField(y_n, z);
-		} catch (std::exception &e) {
+		} 
+		catch (std::exception &e) {
 		  std::cerr << "PropagationCK: Exception in getField." << std::endl;
 		  std::cerr << e.what() << std::endl;
 		}
@@ -154,23 +141,16 @@ void DiffusionModule::tryStep(const Vector3d &PosIn, Vector3d &POut, Vector3d &P
 		k[i] = BField.getUnitVector();
 		POut += k[i] * b[i] * propStep;
 		PosErr +=  (k[i] * (b[i] - bs[i])) * propStep;
-		
-		// Calculate the Normal-vector as the derivative of the Tangent-vector
-		if (i > 0){
-		  NVec += ( k[i] - k[i-1] ) / ( Pos[i-1] - Pos[i] ).getR();
-		}
-
+			
 	}
 	TVec = POut.getUnitVector();
 	
-	// Choose a random perpendicular vector as the Normal-vector in case of non-curved field line
-	if (NVec.getR() == 0.){
-	  NVec = TVec.cross( Random::instance().randVector() );
-	    }
-	
+	// Choose a random perpendicular vector as the Normal-vector
+
+	NVec = TVec.cross( Random::instance().randVector() );
 	NVec = NVec.getUnitVector();
+
 	BVec = (TVec.cross(NVec)).getUnitVector();
-	//std::cout << "Tripod " << TVec <<", " << NVec <<", " << BVec <<"\n";
 }
 
 
@@ -195,19 +175,13 @@ void DiffusionModule::setTolerance(double tol) {
 	tolerance = tol;
 }
 
-void DiffusionModule::setEpsilonN(double e) {
+void DiffusionModule::setEpsilon(double e) {
 	if ((e > 1) or (e < 0))
 		throw std::runtime_error(
-				"DiffusionModule: epsilonN not in range 0-1");
-	epsilonN = e;
+				"DiffusionModule: epsilon not in range 0-1");
+	epsilon = e;
 }
 
-void DiffusionModule::setEpsilonB(double e) {
-	if ((e > 1) or (e < 0))
-		throw std::runtime_error(
-				"DiffusionModule: epsilonB not in range 0-1");
-	epsilonB = e;
-}
 
 void DiffusionModule::setAlpha(double a) {
 	if ((a > 2.) or (a < 0))
@@ -235,13 +209,10 @@ double DiffusionModule::getTolerance() const {
 	return tolerance;
 }
 
-double DiffusionModule::getEpsilonN() const {
-	return epsilonN;
+double DiffusionModule::getEpsilon() const {
+	return epsilon;
 }
 
-double DiffusionModule::getEpsilonB() const {
-	return epsilonB;
-}
 
 double DiffusionModule::getAlpha() const {
 	return alpha;
@@ -259,9 +230,8 @@ std::string DiffusionModule::getDescription() const {
 	s << "maxStep: " << maxStep / kpc  << " kpc, ";
 	s << "tolerance: " << tolerance << "\n";
 	
-	if (epsilonN != 0. or epsilonB != 0.) {
-	  s << "epsilonN: " << epsilonN << ", ";
-	  s << "epsilonB: " << epsilonB << "\n";
+	if (epsilon != 0.1) {
+	  s << "epsilon: " << epsilon << ", ";
 	  }
 	
 	if (alpha != 1./3.) {
