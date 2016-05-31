@@ -218,7 +218,7 @@ Vector3d JF12Field::getRegularField(const Vector3d& pos) const {
 		bMagX = bX * exp(-1 * rp / rX) * pow(rp / r, 2.);
 		double thetaX = atan2(fabs(pos.z), (r - rp));
 		if (pos.z == 0)
-			thetaX = 0.;
+			thetaX = M_PI / 2.;
 		sinThetaX = sin(thetaX);
 		cosThetaX = cos(thetaX);
 	} else {
