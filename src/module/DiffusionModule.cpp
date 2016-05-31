@@ -29,6 +29,20 @@ DiffusionModule::DiffusionModule(ref_ptr<MagneticField> field, double tolerance,
 				 double minStep, double maxStep, double epsilon) :
   field(field)
 {
+  setTurbulent(false);
+  setMaximumStep(maxStep);
+  setMinimumStep(minStep);
+  setTolerance(tolerance);
+  setEpsilon(epsilon);
+  setScale(1.);
+  setAlpha(1./3.);
+
+  }
+
+DiffusionModule::DiffusionModule(ref_ptr<MagneticField> field, ref_ptr<MagneticField> turbField,  double tolerance, double minStep, double maxStep, double epsilon) :
+  field(field)
+{
+  setTurbulentField(turbField);
   setMaximumStep(maxStep);
   setMinimumStep(minStep);
   setTolerance(tolerance);
@@ -56,14 +70,15 @@ void DiffusionModule::process(Candidate *candidate) const {
 	}
 
 	Vector3d PosIn = current.getPosition();
+	Vector3d DirIn = current.getDirection();
 	double z = candidate->getRedshift();
 	double rig = current.getEnergy() / current.getCharge();
 
-	double DifCoeff = scale * 6.1e24 * pow((std::abs(rig) / 4.0e9), alpha);
 	double BTensor[] = {0., 0., 0., 0., 0., 0., 0., 0., 0.};
-	BTensor[0] = pow( 2  * DifCoeff, 0.5);
-	BTensor[4] = pow(2 * epsilon * DifCoeff, 0.5);
-	BTensor[8] = pow(2 * epsilon * DifCoeff, 0.5);
+
+	calculateBTensor(rig, BTensor, PosIn, DirIn, z);
+	
+	//std::cout << "BTensor diagonal = " << BTensor[0] <<"\t" <<BTensor[4] <<"\t" <<BTensor[8] <<"\n";
 	
 	double eta[] = {0., 0., 0.};
 	for(size_t i=0; i < 3; i++) {
@@ -83,6 +98,7 @@ void DiffusionModule::process(Candidate *candidate) const {
 	Vector3d PosOut = Vector3d(0.);
 	Vector3d DirOut = Vector3d(0.);
 	Vector3d PosErr = Vector3d(0.);
+
 
 
 	do {
@@ -106,7 +122,7 @@ void DiffusionModule::process(Candidate *candidate) const {
 	  candidate->setNextStep(step);
 	  return;
 	}
-	// Integration of the SDE with a Mayorama Euler Method
+	// Integration of the SDE with a Mayorama-Euler-method
 	Vector3d PO = PosIn + (TVec * std::abs(TStep) + NVec * NStep + BVec * BStep) * pow(hTry, 0.5);
 	
 	
@@ -115,6 +131,8 @@ void DiffusionModule::process(Candidate *candidate) const {
 	current.setDirection(DirOut);
 	candidate->setCurrentStep(hTry * c_light);
 	candidate->setNextStep(h * c_light);
+	
+
 }
 
 
@@ -150,9 +168,44 @@ void DiffusionModule::tryStep(const Vector3d &PosIn, Vector3d &POut, Vector3d &P
 	NVec = TVec.cross( Random::instance().randVector() );
 	NVec = NVec.getUnitVector();
 
+	// Calculate the Binormal-vector
 	BVec = (TVec.cross(NVec)).getUnitVector();
 }
 
+
+void DiffusionModule::calculateBTensor(double r, double BTen[], Vector3d pos, Vector3d dir, double z) const {
+  if (isTurbulent == false) {
+    double DifCoeff = scale * 6.1e24 * pow((std::abs(r) / 4.0e9), alpha);
+    BTen[0] = pow( 2  * DifCoeff, 0.5);
+    BTen[4] = pow(2 * epsilon * DifCoeff, 0.5);
+    BTen[8] = pow(2 * epsilon * DifCoeff, 0.5);
+    return;
+  }
+  // Diffusion model from Snodin et al. "Global diffusion of cosmic rays in random magnetic fields" (2016)
+  else {
+    double turbStrength = (turbField->getField(pos, z)).getR();
+    Vector3d regField = field->getField(pos, z);
+    double regStrength = regField.getR();
+    double sinTheta = std::sin(dir.getAngleTo(regField));
+    //std::cout << "b0 = " << turbStrength << "\t B0 = " << regStrength << "\n";
+    double mu = turbStrength*turbStrength / ( turbStrength*turbStrength +  regStrength*regStrength );
+    //std::cout << "mu = " << mu <<"\n";
+    double RL = std::abs(r) / regStrength / c_light ; //Larmor-radius
+    //std::cout << "Larmorradius = " << RL / parsec <<"\n";
+    double L = 272*parsec; //from lmax of the JF12 turbulent field component
+    double kappa_0 = (0.0017 + 0.75 * (RL/L) ) * c_light*L;
+    //std::cout << "kappa_0 = " << kappa_0 <<"\n";
+    double kappa_parallel = kappa_0 + 1./3. * pow((RL/L), 1./3.) * (1-mu)/mu * c_light*L;
+    double chi = 2.35; // obtained from FLRW simulations. Analytically this is chi = 4*D_0/l_c .
+    double kappa_perp = ( kappa_0 * mu + 0.19 * (1-mu) * pow((RL / L), 0.61) ) / ( 1 + chi * (1-mu)/ mu);
+    BTen[0] = pow( 2  * kappa_parallel, 0.5);
+    BTen[4] = pow( 2 * kappa_perp, 0.5);
+    BTen[8] = pow( 2 * kappa_perp, 0.5);
+
+  }
+  
+  
+}
 
 void DiffusionModule::setMinimumStep(double min) {
 	if (min < 0)
@@ -197,6 +250,21 @@ void DiffusionModule::setScale(double s) {
 	scale = s;
 }
 
+void DiffusionModule::setTurbulent(bool b) {
+  isTurbulent = b;
+}
+
+void DiffusionModule::setTurbulentField(ref_ptr<crpropa::MagneticField> field){
+  try {
+    turbField = field;
+    setTurbulent(true);
+  }
+  catch (std::exception &e) {
+    std::cerr << "DiffusionModule: Exception in setTurbulentField" << std::endl;
+    std::cerr << e.what() << std::endl;
+  }
+}
+
 double DiffusionModule::getMinimumStep() const {
 	return minStep;
 }
@@ -220,6 +288,10 @@ double DiffusionModule::getAlpha() const {
 
 double DiffusionModule::getScale() const {
 	return scale;
+}
+
+bool DiffusionModule::getTurbulent() const {
+  return isTurbulent;
 }
 
 

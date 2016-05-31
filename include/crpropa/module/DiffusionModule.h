@@ -20,24 +20,29 @@ namespace crpropa {
 class DiffusionModule : public Module{
 
 private:
-    //std::vector<double> a, b, bs; /*< Cash-Karp coefficients */
 	    ref_ptr<MagneticField> field;
+	    ref_ptr<MagneticField> turbField;
+	    MagneticField NullField;
 	    double minStep;
 	    double maxStep;
 	    double tolerance;
 	    double epsilon;
 	    double alpha;
-	    double scale;	   
+	    double scale;
+	    bool isTurbulent;
 	    
 
 public:
 	    DiffusionModule(ref_ptr<crpropa::MagneticField> field, double tolerance = 1e-4, 
+	    		    double minStep = 10*parsec, double maxStep = 1 * kpc, double epsilon = 0.1);
+	    DiffusionModule(ref_ptr<crpropa::MagneticField> field, ref_ptr<crpropa::MagneticField> turbField, double tolerance = 1e-4, 
 			    double minStep = 10*parsec, double maxStep = 1 * kpc, double epsilon = 0.1);
 
 	    void process(crpropa::Candidate *candidate) const;
 	   
-	  
 	    void tryStep(const Vector3d &Pos, Vector3d &POut, Vector3d &PosErr, Vector3d &TVec,Vector3d &NVec,Vector3d &BVec, double z, double propStep ) const;
+	    
+	    void calculateBTensor(double rig, double BTen[], Vector3d pos, Vector3d dir, double z) const;
 
 	    void setMinimumStep(double minStep);
 	    void setMaximumStep(double maxStep);
@@ -45,6 +50,8 @@ public:
 	    void setEpsilon(double kappa);
 	    void setAlpha(double alpha);
 	    void setScale(double Scale);
+	    void setTurbulent(bool isTurb);
+	    void setTurbulentField(ref_ptr<crpropa::MagneticField> field);
 
 	    double getMinimumStep() const;
 	    double getMaximumStep() const;
@@ -52,6 +59,7 @@ public:
 	    double getEpsilon() const;
 	    double getAlpha() const;
 	    double getScale() const;
+	    bool getTurbulent() const;
 	    std::string getDescription() const;
 
 }; 
