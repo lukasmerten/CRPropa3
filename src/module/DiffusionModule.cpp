@@ -190,14 +190,14 @@ void DiffusionModule::calculateBTensor(double r, double BTen[], Vector3d pos, Ve
     //std::cout << "b0 = " << turbStrength << "\t B0 = " << regStrength << "\n";
     double mu = turbStrength*turbStrength / ( turbStrength*turbStrength +  regStrength*regStrength );
     //std::cout << "mu = " << mu <<"\n";
-    double RL = std::abs(r) / regStrength / c_light ; //Larmor-radius
+    double RL = std::abs(r) / regStrength / c_light * sinTheta; //Larmor-radius
     //std::cout << "Larmorradius = " << RL / parsec <<"\n";
     double L = 272*parsec; //from lmax of the JF12 turbulent field component
     double kappa_0 = (0.0017 + 0.75 * (RL/L) ) * c_light*L;
     //std::cout << "kappa_0 = " << kappa_0 <<"\n";
     double kappa_parallel = kappa_0 + 1./3. * pow((RL/L), 1./3.) * (1-mu)/mu * c_light*L;
     double chi = 2.35; // obtained from FLRW simulations. Analytically this is chi = 4*D_0/l_c .
-    double kappa_perp = ( kappa_0 * mu + 0.19 * (1-mu) * pow((RL / L), 0.61) ) / ( 1 + chi * (1-mu)/ mu);
+    double kappa_perp = ( kappa_0 * mu + 0.19 * (1-mu) * pow((RL / L), 0.61) * c_light*L ) / ( 1 + chi * (1-mu)/ mu);
     BTen[0] = pow( 2  * kappa_parallel, 0.5);
     BTen[4] = pow( 2 * kappa_perp, 0.5);
     BTen[8] = pow( 2 * kappa_perp, 0.5);
