@@ -14,7 +14,10 @@
 %include "exception.i"
 
 #ifdef CRPROPA_HAVE_QUIMBY
-%import (module="quimby") quimby.i
+%import (module="quimby") "quimby/Referenced.h"
+%import (module="quimby") "quimby/Vector3.h"
+%import (module="quimby") "quimby/MagneticField.h"
+//%import (module="quimby") quimby.i
 #endif
 
 #ifdef CRPROPA_HAVE_SAGA
@@ -36,12 +39,16 @@
 #include "crpropa/module/OutputShell.h"
 #include "crpropa/module/OutputROOT.h"
 #include "crpropa/module/OutputCRPropa2.h"
-#include "crpropa/module/PhotonDINT.h"
-#include "crpropa/module/PhotonDINT1D.h"
+#include "crpropa/module/EMCascade.h"
 #include "crpropa/module/PhotonEleCa.h"
 #include "crpropa/module/PhotonOutput1D.h"
 #include "crpropa/module/SimplePropagation.h"
 #include "crpropa/module/PropagationCK.h"
+#include "crpropa/module/EMPairProduction.h"
+#include "crpropa/module/EMDoublePairProduction.h"
+#include "crpropa/module/EMTripletPairProduction.h"
+#include "crpropa/module/EMInverseComptonScattering.h"
+#include "crpropa/module/SynchrotronRadiation.h"
 #include "crpropa/module/Tools.h"
 
 #include "crpropa/magneticField/MagneticField.h"
@@ -50,7 +57,6 @@
 #include "crpropa/magneticField/AMRMagneticField.h"
 #include "crpropa/magneticField/JF12Field.h"
 #include "crpropa/magneticField/PshirkovField.h"
-#include "crpropa/magneticField/TurbulentMagneticField.h"
 
 #include "crpropa/Referenced.h"
 #include "crpropa/Candidate.h"
@@ -108,6 +114,26 @@
 %include "crpropa/ParticleID.h"
 %include "crpropa/ParticleMass.h"
 
+/* override Candidate::getProperty() */
+%ignore crpropa::Candidate::getProperty(const std::string &, std::string &) const;
+
+%extend crpropa::Candidate {
+    PyObject * getProperty(PyObject * name){
+
+        std::string value;
+        std::string input;
+
+        if (PyString_Check( name )){
+            input = PyString_AsString( name );
+        } else {
+            std::cerr << "ERROR: The argument of getProperty() must be a string!" << std::endl;
+            return NULL;
+        }
+        $self->getProperty( input, value );
+
+        return PyString_FromString( value.c_str() );
+    }
+};
 %template(CandidateVector) std::vector< crpropa::ref_ptr<crpropa::Candidate> >;
 %template(CandidateRefPtr) crpropa::ref_ptr<crpropa::Candidate>;
 %include "crpropa/Candidate.h"
@@ -133,11 +159,11 @@
 %template(ScalarGrid) crpropa::Grid<float>;
 
 %include "crpropa/magneticField/MagneticFieldGrid.h"
+%feature("notabstract") QuimbyMagneticFieldAdapter;
 %include "crpropa/magneticField/QuimbyMagneticField.h"
 %include "crpropa/magneticField/AMRMagneticField.h"
 %include "crpropa/magneticField/JF12Field.h"
 %include "crpropa/magneticField/PshirkovField.h"
-%include "crpropa/magneticField/TurbulentMagneticField.h"
 
 %include "crpropa/module/BreakCondition.h"
 %include "crpropa/module/Boundary.h"
@@ -150,8 +176,7 @@
 %include "crpropa/module/OutputShell.h"
 %include "crpropa/module/OutputROOT.h"
 %include "crpropa/module/OutputCRPropa2.h"
-%include "crpropa/module/PhotonDINT.h"
-%include "crpropa/module/PhotonDINT1D.h"
+%include "crpropa/module/EMCascade.h"
 %include "crpropa/module/PhotonEleCa.h"
 %include "crpropa/module/PhotonOutput1D.h"
 %include "crpropa/module/ElectronPairProduction.h"
@@ -159,6 +184,13 @@
 %include "crpropa/module/PhotoPionProduction.h"
 %include "crpropa/module/PhotoDisintegration.h"
 %include "crpropa/module/Redshift.h"
+%include "crpropa/module/EMPairProduction.h"
+%include "crpropa/module/EMDoublePairProduction.h"
+%include "crpropa/module/EMTripletPairProduction.h"
+%include "crpropa/module/EMInverseComptonScattering.h"
+%include "crpropa/module/SynchrotronRadiation.h"
+
+%template(IntSet) std::set<int>;
 %include "crpropa/module/Tools.h"
 
 %template(SourceInterfaceRefPtr) crpropa::ref_ptr<crpropa::SourceInterface>;

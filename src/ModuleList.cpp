@@ -21,8 +21,7 @@ void g_cancel_signal_callback(int sig) {
 	g_cancel_signal_flag = true;
 }
 
-ModuleList::ModuleList() :
-		showProgress(false) {
+ModuleList::ModuleList() : showProgress(false) {
 }
 
 ModuleList::~ModuleList() {
@@ -36,22 +35,16 @@ void ModuleList::add(Module *module) {
 	modules.push_back(module);
 }
 
-void ModuleList::beginRun() {
-	module_list_t::iterator m;
-	for (m = modules.begin(); m != modules.end(); m++)
-		(*m)->beginRun();
-}
-
 void ModuleList::process(Candidate *candidate) const {
 	module_list_t::const_iterator m;
 	for (m = modules.begin(); m != modules.end(); m++)
 		(*m)->process(candidate);
 }
 
-void ModuleList::endRun() {
-	module_list_t::iterator m;
+void ModuleList::process(ref_ptr<Candidate> candidate) const {
+	module_list_t::const_iterator m;
 	for (m = modules.begin(); m != modules.end(); m++)
-		(*m)->endRun();
+		(*m)->process(candidate);
 }
 
 void ModuleList::run(Candidate *candidate, bool recursive) {
@@ -66,8 +59,6 @@ void ModuleList::run(Candidate *candidate, bool recursive) {
 			run(candidate->secondaries[i], recursive);
 		}
 	}
-
-
 }
 
 void ModuleList::run(candidate_vector_t &candidates, bool recursive) {
@@ -89,9 +80,9 @@ void ModuleList::run(candidate_vector_t &candidates, bool recursive) {
 	sighandler_t old_sigterm_handler = ::signal(SIGTERM,
 			g_cancel_signal_callback);
 
-	beginRun();  // call beginRun in all modules
 
-#pragma omp parallel for schedule(static, 100)
+#pragma omp parallel for schedule(static, 1000)
+
 	for (size_t i = 0; i < count; i++) {
 		if (g_cancel_signal_flag)
 			continue;
@@ -107,8 +98,6 @@ void ModuleList::run(candidate_vector_t &candidates, bool recursive) {
 #pragma omp critical(progressbarUpdate)
 			progressbar.update();
 	}
-
-	endRun();  // call endRun in all modules
 
 	::signal(SIGINT, old_sigint_handler);
 	::signal(SIGTERM, old_sigterm_handler);
@@ -130,15 +119,15 @@ void ModuleList::run(SourceInterface *source, size_t count, bool recursive) {
 	sighandler_t old_signal_handler = ::signal(SIGINT,
 			g_cancel_signal_callback);
 
-	beginRun();  // call beginRun in all modules
 
-#pragma omp parallel for schedule(static, 100)
+#pragma omp parallel for schedule(static, 1000)
+
 	for (size_t i = 0; i < count; i++) {
 		if (g_cancel_signal_flag)
 			continue;
 
 		ref_ptr<Candidate> candidate;
-		
+
 		try {
 			candidate = source->getCandidate();
 		} catch (std::exception &e) {
@@ -161,8 +150,6 @@ void ModuleList::run(SourceInterface *source, size_t count, bool recursive) {
 #pragma omp critical(progressbarUpdate)
 			progressbar.update();
 	}
-
-	endRun();  // call endRun in all modules
 
 	::signal(SIGINT, old_signal_handler);
 }

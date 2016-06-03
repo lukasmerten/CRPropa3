@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdexcept>
+#include <iostream>
 #include <kiss/string.h>
 
 #ifdef CRPROPA_HAVE_ZLIB
@@ -40,19 +41,15 @@ TextOutput::TextOutput(const std::string &filename,
 		gzip();
 }
 
-void TextOutput::beginRun() {
-	if (!begun) {
-		printHeader();
-	}
-	Output::beginRun();
-}
-
-void TextOutput::printHeader() {
+void TextOutput::printHeader() const {
 	*out << "#";
 	if (fields.test(TrajectoryLengthColumn))
 		*out << "\tD";
 	if (fields.test(RedshiftColumn))
 		*out << "\tz";
+
+	if (fields.test(SerialNumberColumn))
+		*out << "\tSN";
 	if (fields.test(CurrentIdColumn))
 		*out << "\tID";
 	if (fields.test(CurrentEnergyColumn))
@@ -67,6 +64,8 @@ void TextOutput::printHeader() {
 		if (not oneDimensional)
 			*out << "\tPx\tPy\tPz";
 
+	if (fields.test(SerialNumberColumn))
+		*out << "\tSN0";
 	if (fields.test(SourceIdColumn))
 		*out << "\tID0";
 	if (fields.test(SourceEnergyColumn))
@@ -81,6 +80,8 @@ void TextOutput::printHeader() {
 		if (not oneDimensional)
 			*out << "\tP0x\tP0y\tP0z";
 
+	if (fields.test(SerialNumberColumn))
+		*out << "\tSN1";
 	if (fields.test(CreatedIdColumn))
 		*out << "\tID1";
 	if (fields.test(CreatedEnergyColumn))
@@ -101,6 +102,8 @@ void TextOutput::printHeader() {
 				<< " Mpc]\n";
 	if (fields.test(RedshiftColumn))
 		*out << "# z             Redshift\n";
+	if (fields.test(SerialNumberColumn))
+		*out << "# SN/SN0/SN1    Serial number. Unique (within this run) id of the particle.\n";
 	if (fields.test(CurrentIdColumn) || fields.test(CreatedIdColumn)
 			|| fields.test(SourceIdColumn))
 		*out << "# ID/ID0/ID1    Particle type (PDG MC numbering scheme)\n";
@@ -119,7 +122,6 @@ void TextOutput::printHeader() {
 }
 
 void TextOutput::process(Candidate *c) const {
-	Output::process(c);
 	if (fields.none())
 		return;
 
@@ -133,6 +135,10 @@ void TextOutput::process(Candidate *c) const {
 				c->getTrajectoryLength() / lengthScale);
 	if (fields.test(RedshiftColumn))
 		p += sprintf(buffer + p, "%1.5f\t", c->getRedshift());
+
+	if (fields.test(SerialNumberColumn))
+		p += sprintf(buffer + p, "%10i\t",
+				c->getSerialNumber());
 	if (fields.test(CurrentIdColumn))
 		p += sprintf(buffer + p, "%10i\t", c->current.getId());
 	if (fields.test(CurrentEnergyColumn))
@@ -156,6 +162,8 @@ void TextOutput::process(Candidate *c) const {
 		}
 	}
 
+	if (fields.test(SerialNumberColumn))
+		p += sprintf(buffer + p, "%10i\t", c->getSourceSerialNumber());
 	if (fields.test(SourceIdColumn))
 		p += sprintf(buffer + p, "%10i\t", c->source.getId());
 	if (fields.test(SourceEnergyColumn))
@@ -180,6 +188,9 @@ void TextOutput::process(Candidate *c) const {
 
 	}
 
+	if (fields.test(SerialNumberColumn))
+		p += sprintf(buffer + p, "%10i\t",
+				c->getCreatedSerialNumber());
 	if (fields.test(CreatedIdColumn))
 		p += sprintf(buffer + p, "%10i\t", c->created.getId());
 	if (fields.test(CreatedEnergyColumn))
@@ -209,6 +220,9 @@ void TextOutput::process(Candidate *c) const {
 
 #pragma omp critical
 	{
+		if (count == 0)
+			printHeader();
+		Output::process(c);
 		out->write(buffer, p);
 	}
 
@@ -218,19 +232,20 @@ std::string TextOutput::getDescription() const {
 	return "TextOutput";
 }
 
-void TextOutput::endRun() {
-	Output::endRun();
+void TextOutput::close() {
 #ifdef CRPROPA_HAVE_ZLIB
 	zstream::ogzstream *zs = dynamic_cast<zstream::ogzstream *>(out);
 	if (zs) {
 		zs->close();
+		delete out;
+		out = 0;
 	}
 #endif
 	outfile.flush();
 }
 
 TextOutput::~TextOutput() {
-	endRun();
+	close();
 }
 
 void TextOutput::gzip() {

@@ -5,17 +5,21 @@
 
 namespace crpropa {
 
-Output::Output() : lengthScale(Mpc), energyScale(EeV), oneDimensional(false), begun(false), ended(false) {
+Output::Output() : lengthScale(Mpc), energyScale(EeV), oneDimensional(false), count(0) {
 	enableAll();
 }
 
-Output::Output(OutputType outputtype) : lengthScale(Mpc), energyScale(EeV), oneDimensional(false), begun(false), ended(false) {
+Output::Output(OutputType outputtype) : lengthScale(Mpc), energyScale(EeV), oneDimensional(false), count(0) {
 		setOutputType(outputtype);
 }
 
 void Output::modify() {
-	if (begun || ended)
-		throw std::runtime_error("Output: cannot change Output parameters after begin/endRun.");
+	if (count > 0)
+		throw std::runtime_error("Output: cannot change Output parameters after data has been written to file.");
+}
+
+void Output::process(Candidate *c) const {
+	count++;
 }
 
 void Output::setOutputType(OutputType outputtype) {
@@ -27,10 +31,10 @@ void Output::setOutputType(OutputType outputtype) {
 		set(CurrentEnergyColumn, true);
 		set1D(true);
 	} else if (outputtype == Event1D) {
-		// ID, E, D, ID0, E0
+		// D, ID, E, ID0, E0
+		set(TrajectoryLengthColumn, true);
 		set(CurrentIdColumn, true);
 		set(CurrentEnergyColumn, true);
-		set(TrajectoryLengthColumn, true);
 		set(SourceIdColumn, true);
 		set(SourceEnergyColumn, true);
 		set1D(true);
@@ -43,15 +47,14 @@ void Output::setOutputType(OutputType outputtype) {
 		set(CurrentDirectionColumn, true);
 		set1D(false);
 	} else if (outputtype == Event3D) {
-		// D, ID, ID0, E, E0, X, Y, Z, X0, Y0, Z0, Px, Py, Pz, P0x, P0y, P0z,z
+		// D, ID, E, X, Y, Z, Px, Py, Pz, ID0, E0, X0, Y0, Z0
 		set(TrajectoryLengthColumn, true);
 		set(CurrentIdColumn, true);
-		set(SourceIdColumn, true);
 		set(CurrentEnergyColumn, true);
-		set(SourceEnergyColumn, true);
 		set(CurrentPositionColumn, true);
-		set(SourcePositionColumn, true);
 		set(CurrentDirectionColumn, true);
+		set(SourceIdColumn, true);
+		set(SourceEnergyColumn, true);
 		set(SourcePositionColumn, true);
 		set1D(false);
 	} else if (outputtype == Everything) {
@@ -103,19 +106,8 @@ void Output::disableAll() {
 	fields.reset();
 }
 
-void  Output::process(Candidate *candidate) const {
-	if (!begun)
-		throw std::runtime_error("Output: call beginRun before using Output");
-	if (ended)
-		throw std::runtime_error("Output: cannot process output after endRun was called.");
-}
-
-void  Output::beginRun() {
-	begun = true;
-}
-
-void  Output::endRun() {
-	ended = true;
+size_t Output::getCount() const {
+	return count;
 }
 
 } // namespace crpropa

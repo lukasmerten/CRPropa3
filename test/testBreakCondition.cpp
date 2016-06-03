@@ -39,6 +39,21 @@ TEST(MaximumTrajectoryLength, test) {
 	EXPECT_TRUE(c.hasProperty("Rejected"));
 }
 
+TEST(MaximumTrajectoryLength, observer) {
+	MaximumTrajectoryLength maxLength(12);
+	maxLength.addObserverPosition(Vector3d(10, 0, 0));
+	Candidate c;
+	c.current.setPosition(Vector3d(5, 0, 0));
+
+	c.setTrajectoryLength(5);
+	maxLength.process(&c);
+	EXPECT_TRUE(c.isActive());
+
+	c.setTrajectoryLength(8);
+	maxLength.process(&c);
+	EXPECT_FALSE(c.isActive());
+}
+
 TEST(MinimumRedshift, test) {
 	MinimumRedshift minZ; // default minimum redshift of 0
 	Candidate c;
@@ -54,89 +69,79 @@ TEST(MinimumRedshift, test) {
 }
 
 //** ============================= Observers ================================ */
-TEST(SmallObserverSphere, detection) {
+TEST(ObserverFeature, SmallSphere) {
 	// detect if the current position is inside and the previous outside of the sphere
-	SmallObserverSphere obs(Vector3d(0, 0, 0), 1);
+	Observer obs;
+	obs.add(new ObserverSmallSphere(Vector3d(0, 0, 0), 1));
 	Candidate c;
+	c.setNextStep(10);
 
 	// no detection: particle was inside already
 	c.current.setPosition(Vector3d(0.9, 0, 0));
 	c.previous.setPosition(Vector3d(0.95, 0, 0));
 	obs.process(&c);
 	EXPECT_TRUE(c.isActive());
-	EXPECT_FALSE(c.hasProperty("Detected"));
+
+	// limit step
+	EXPECT_DOUBLE_EQ(c.getNextStep(), 0.1);
 
 	// detection: particle just entered
 	c.current.setPosition(Vector3d(0.9, 0, 0));
 	c.previous.setPosition(Vector3d(1.1, 0, 0));
 	obs.process(&c);
 	EXPECT_FALSE(c.isActive());
-	EXPECT_TRUE(c.hasProperty("Detected"));
 }
 
-TEST(SmallObserverSphere, limitStep) {
-	SmallObserverSphere obs(Vector3d(0, 0, 0), 1);
+TEST(ObserverFeature, LargeSphere) {
+	// detect if the current position is outside and the previous inside of the sphere
+	Observer obs;
+	obs.add(new ObserverLargeSphere(Vector3d(0, 0, 0), 10));
 	Candidate c;
 	c.setNextStep(10);
-	c.current.setPosition(Vector3d(0, 0, 2));
-	obs.process(&c);
-	EXPECT_DOUBLE_EQ(c.getNextStep(), 1);
-}
-
-TEST(LargeObserverSphere, detection) {
-	// detect if the current position is outside and the previous inside of the sphere
-	LargeObserverSphere obs(Vector3d(0, 0, 0), 10);
-	Candidate c;
 
 	// no detection: particle was outside already
 	c.current.setPosition(Vector3d(11, 0, 0));
 	c.previous.setPosition(Vector3d(10.5, 0, 0));
 	obs.process(&c);
 	EXPECT_TRUE(c.isActive());
-	EXPECT_FALSE(c.hasProperty("Detected"));
+
+	// limit step
+	EXPECT_DOUBLE_EQ(c.getNextStep(), 1);
 
 	// detection: particle just left
 	c.current.setPosition(Vector3d(11, 0, 0));
 	c.previous.setPosition(Vector3d(9.5, 0, 0));
 	obs.process(&c);
 	EXPECT_FALSE(c.isActive());
-	EXPECT_TRUE(c.hasProperty("Detected"));
 }
 
-TEST(LargeObserverSphere, limitStep) {
-	LargeObserverSphere obs(Vector3d(0, 0, 0), 10);
+TEST(ObserverFeature, Point) {
+	Observer obs;
+	obs.add(new ObserverPoint()); obs;
 	Candidate c;
 	c.setNextStep(10);
-	c.current.setPosition(Vector3d(0, 0, 8));
-	obs.process(&c);
-	EXPECT_DOUBLE_EQ(c.getNextStep(), 2);
-}
 
-TEST(Observer1D, noDetection) {
-	Observer1D obs; // observer at x = 0
-	Candidate c;
+	// no detection, limit step
 	c.current.setPosition(Vector3d(5, 0, 0));
-	c.setNextStep(10);
 	obs.process(&c);
 	EXPECT_TRUE(c.isActive());
-	EXPECT_DOUBLE_EQ(5, c.getNextStep());
-}
 
-TEST(Observer1D, detection) {
-	Observer1D obs; // observer at x = 0
-	Candidate c;
+	// limit step
+	EXPECT_DOUBLE_EQ(5, c.getNextStep());
+
+	// detection
 	c.current.setPosition(Vector3d(0, 0, 0));
 	obs.process(&c);
 	EXPECT_FALSE(c.isActive());
 }
 
-TEST(DetectAll, detection) {
+TEST(ObserverFeature, DetectAll) {
 	// DetectAll should detect all candidates
-	DetectAll obs("Wait", "You forgot your lunchbox");
+	Observer obs;
+	obs.add(new ObserverDetectAll());
 	Candidate c;
 	obs.process(&c);
 	EXPECT_FALSE(c.isActive());
-	EXPECT_TRUE(c.hasProperty("Wait"));
 }
 
 //** ========================= Boundaries =================================== */

@@ -377,13 +377,13 @@ public:
 	void add(int A, int Z, double abundance);
 	void prepareParticle(ParticleState &particle) const;
 	void setDescription();
-	
+
     const std::vector<double> *getNucleusCDF(int id) const {
         for (size_t i = 0; i<nuclei.size(); i++)
             if (nuclei[i].id == id)
             	return &nuclei[i].cdf;
     	return 0;
-    }	
+    }
 
 protected:
 

@@ -185,7 +185,7 @@
 
 /* 3. Pretty print for Python */
 
-%define __REPR__( classname ) 
+%define __REPR__( classname )
 
 %pythoncode %{
 globals()["classname"["classname".find('::')+2:]].__repr__ = globals()["classname"["classname".find('::')+2:]].getDescription
@@ -193,7 +193,7 @@ globals()["classname"["classname".find('::')+2:]].__repr__ = globals()["classnam
 
 %enddef
 
-%define VECTOR3__REPR__( classname ) 
+%define VECTOR3__REPR__( classname )
 
 %template(Vector3d) classname<double>;
 %template(Vector3f) classname<float>;
@@ -201,7 +201,7 @@ globals()["classname"["classname".find('::')+2:]].__repr__ = globals()["classnam
 %pythoncode %{
 
 def Vector3__repr__(self):
-    return "Vector(%.3g, %.3g, %.3g)" % (self.x, self.y, self.z)
+    return "Vector(%.6G, %.6G, %.6G)" % (self.x, self.y, self.z)
 Vector3d.__repr__ = Vector3__repr__
 Vector3f.__repr__ = Vector3__repr__
 
