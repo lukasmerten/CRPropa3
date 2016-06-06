@@ -31,7 +31,8 @@ class DiffusionOneDirection(unittest.TestCase):
     # magnetic field
     ConstMagVec = Vector3d(0*nG,0*nG,1*nG)
     BField = UniformMagneticField(ConstMagVec)
-    Dif = DiffusionModule(BField, 1e-4, 1*parsec, 10*kpc, 0.)
+    Dif = DiffusionModule(BField, 1e-4, 1*pc, 10*kpc, 0.)
+
     maxTra = MaximumTrajectoryLength(50 *kpc)
     msg1 = "Note that this is a statistical test. It might fail by chance with a probabilty O(0.01)! You should rerun the test to make sure there is a bug."
     msg2 = "Note that this is a statistical test. It might fail by chance with a probabilty O(0.001)! You should rerun the test to make sure there is a bug."

@@ -27,9 +27,10 @@ const double bs[] = { 2825. / 27648., 0., 18575. / 48384., 13525.
 
 DiffusionModule::DiffusionModule(ref_ptr<MagneticField> field, double tolerance, 
 				 double minStep, double maxStep, double epsilon) :
-  field(field)
+  minStep(0)
 {
   setTurbulent(false);
+  setField(field);
   setMaximumStep(maxStep);
   setMinimumStep(minStep);
   setTolerance(tolerance);
@@ -40,8 +41,9 @@ DiffusionModule::DiffusionModule(ref_ptr<MagneticField> field, double tolerance,
   }
 
 DiffusionModule::DiffusionModule(ref_ptr<MagneticField> field, ref_ptr<MagneticField> turbField,  double tolerance, double minStep, double maxStep, double epsilon) :
-  field(field)
+  minStep(0)
 {
+  setField(field);
   setTurbulentField(turbField);
   setMaximumStep(maxStep);
   setMinimumStep(minStep);
@@ -207,6 +209,7 @@ void DiffusionModule::calculateBTensor(double r, double BTen[], Vector3d pos, Ve
   
 }
 
+
 void DiffusionModule::setMinimumStep(double min) {
 	if (min < 0)
 		throw std::runtime_error("DiffusionModule: minStep < 0 ");
@@ -220,6 +223,7 @@ void DiffusionModule::setMaximumStep(double max) {
 		throw std::runtime_error("DiffusionModule: maxStep < minStep");
 	maxStep = max;
 }
+
 
 void DiffusionModule::setTolerance(double tol) {
 	if ((tol > 1) or (tol < 0))
@@ -252,6 +256,10 @@ void DiffusionModule::setScale(double s) {
 
 void DiffusionModule::setTurbulent(bool b) {
   isTurbulent = b;
+}
+
+void DiffusionModule::setField(ref_ptr<MagneticField> f) {
+	field = f;
 }
 
 void DiffusionModule::setTurbulentField(ref_ptr<crpropa::MagneticField> field){

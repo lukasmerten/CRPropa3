@@ -34,9 +34,10 @@ private:
 
 public:
 	    DiffusionModule(ref_ptr<crpropa::MagneticField> field, double tolerance = 1e-4, 
-	    		    double minStep = 10*parsec, double maxStep = 1 * kpc, double epsilon = 0.1);
+	    		    double minStep=(10*pc), double maxStep=(1*kpc), double epsilon=0.1);
+
 	    DiffusionModule(ref_ptr<crpropa::MagneticField> field, ref_ptr<crpropa::MagneticField> turbField, double tolerance = 1e-4, 
-			    double minStep = 10*parsec, double maxStep = 1 * kpc, double epsilon = 0.1);
+			    double minStep = 10*parsec, double maxStep = 1*kpc, double epsilon = 0.1);
 
 	    void process(crpropa::Candidate *candidate) const;
 	   
@@ -51,6 +52,7 @@ public:
 	    void setAlpha(double alpha);
 	    void setScale(double Scale);
 	    void setTurbulent(bool isTurb);
+	    void setField(ref_ptr<crpropa::MagneticField> field);
 	    void setTurbulentField(ref_ptr<crpropa::MagneticField> field);
 
 	    double getMinimumStep() const;
