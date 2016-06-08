@@ -188,7 +188,7 @@ void DiffusionModule::calculateBTensor(double r, double BTen[], Vector3d pos, Ve
     double turbStrength = (turbField->getField(pos, z)).getR();
     Vector3d regField = field->getField(pos, z);
     double regStrength = regField.getR();
-    double sinTheta = std::sin(dir.getAngleTo(regField));
+    double sinTheta = 1.;//std::sin(dir.getAngleTo(regField));
     //std::cout << "b0 = " << turbStrength << "\t B0 = " << regStrength << "\n";
     double mu = turbStrength*turbStrength / ( turbStrength*turbStrength +  regStrength*regStrength );
     //std::cout << "mu = " << mu <<"\n";
