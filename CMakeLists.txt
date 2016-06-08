@@ -1,7 +1,10 @@
 if(APPLE)
+	# rpath specific patches
 	cmake_minimum_required(VERSION 2.8.12)
 else(APPLE)
-	cmake_minimum_required(VERSION 2.8.2)
+	# require > 2.8.8 for FILE DOWNLOAD fixes
+	# allow < 2.8.12 for debian backports
+	cmake_minimum_required(VERSION 2.8.11)
 endif(APPLE)
 project(CRPropa Fortran C CXX)
 
@@ -278,6 +281,7 @@ add_library(crpropa SHARED
 	src/ModuleList.cpp
 	src/Module.cpp
 	src/Candidate.cpp
+	src/EmissionMap.cpp
 	src/ParticleState.cpp
 	src/ParticleID.cpp
 	src/ParticleMass.cpp
