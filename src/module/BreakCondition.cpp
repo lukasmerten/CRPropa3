@@ -56,7 +56,7 @@ void MaximumTrajectoryLength::process(Candidate *c) const {
 		}
 	}
 
-	if (length >= maxLength && length-maxLength <= c->getCurrentStep()) {
+	if (length >= maxLength) {
 		reject(c);
 	} else {
 		c->limitNextStep(maxLength - length);
