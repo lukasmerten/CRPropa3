@@ -27,6 +27,22 @@ public:
 };
 
 /**
+ @class DetectionLength
+ @brief Detects the candidate at a given trajectoryLength
+
+ */
+class DetectionLength: public AbstractCondition {
+	double detLength;
+public:
+	DetectionLength(double length = 0);
+	void setDetectionLength(double length);
+	double getDetectionLength() const;
+	std::string getDescription() const;
+	void process(Candidate *candidate) const;
+};
+
+
+/**
  @class MinimumEnergy
  @brief Deactivates the candidate below a minimum energy
 

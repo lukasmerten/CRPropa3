@@ -183,6 +183,22 @@ public:
 	std::string getDescription() const;
 };
 
+/**
+ @class ObserverTimeEvolution
+ @brief Observes the time evolution of the candidates (phase-space elements)
+ */
+class ObserverTimeEvolution: public ObserverFeature {
+private:
+  std::vector<double> detList;
+public:
+  ObserverTimeEvolution();
+  ObserverTimeEvolution(double min, double dist, double numb);
+  void addTime(const double &position);
+  const std::vector<double>& getTimes() const;
+  DetectionState checkDetection(Candidate *candidate) const;
+  std::string getDescription() const;
+};
+
 }
 
 #endif // CRPROPA_OBSERVER_H
