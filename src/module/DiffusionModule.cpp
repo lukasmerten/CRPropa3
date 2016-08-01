@@ -106,11 +106,13 @@ void DiffusionModule::process(Candidate *candidate) const {
 	do {
 	  hTry = h;
 	  double propStep =  TStep * pow(hTry, 0.5);
-	  
+	  //double propStep =  TStep * pow(hTry, 0.5) / c_light;
+
 	  tryStep(PosIn, PosOut, PosErr, TVec, NVec, BVec, z, propStep);
 	  
 	  // calculate the relative position error r and the next time step h
 	  r = PosErr.getR() / std::abs(propStep) / tolerance;
+	  //r = PosErr.getR() / tolerance;
 	  h *= 0.95 * pow(r, -0.2);
 	  // prevent h from too strong variations
 	  h = clip(h, 0.1 * hTry, 5 * hTry);
@@ -154,13 +156,13 @@ void DiffusionModule::tryStep(const Vector3d &PosIn, Vector3d &POut, Vector3d &P
 		  BField = field->getField(y_n, z);
 		} 
 		catch (std::exception &e) {
-		  std::cerr << "PropagationCK: Exception in getField." << std::endl;
+		  std::cerr << "DiffusionModule: Exception in getField." << std::endl;
 		  std::cerr << e.what() << std::endl;
 		}
 		
 		k[i] = BField.getUnitVector();
 		POut += k[i] * b[i] * propStep;
-		PosErr +=  (k[i] * (b[i] - bs[i])) * propStep;
+		PosErr +=  (k[i] * (b[i] - bs[i])) * fabs(propStep);
 			
 	}
 	TVec = POut.getUnitVector();
