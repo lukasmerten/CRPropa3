@@ -129,6 +129,19 @@ void DiffusionModule::process(Candidate *candidate) const {
 	// Integration of the SDE with a Mayorama-Euler-method
 	Vector3d PO = PosIn + (TVec * std::abs(TStep) + NVec * NStep + BVec * BStep) * pow(hTry, 0.5);
 	
+	bool NaN = std::isnan(PO.getR());
+	
+	if (NaN == true){
+	  std::cout << "position = " << PO << "\n";
+	  std::cout << "PosIn = " << PosIn << "\n";
+	  std::cout << "TVec = " << TVec << "\n";
+	  std::cout << "TStep = " << std::abs(TStep) << "\n";
+	  std::cout << "NVec = " << NVec << "\n";
+	  std::cout << "NStep = " << NStep << "\n";
+	  std::cout << "BVec = " << BVec << "\n";
+	  std::cout << "BStep = " << BStep << "\n";
+	  std::terminate();
+	}
 	
 	DirOut = (PO -PosIn).getUnitVector();
 	current.setPosition(PO);
@@ -167,9 +180,12 @@ void DiffusionModule::tryStep(const Vector3d &PosIn, Vector3d &POut, Vector3d &P
 	}
 	TVec = POut.getUnitVector();
 	
-	// Choose a random perpendicular vector as the Normal-vector
-
-	NVec = TVec.cross( Random::instance().randVector() );
+	// Choose a random perpendicular vector as the Normal-vector.
+	// Prevent 'nan's in the NVec-vector in the case of <TVec, NVec> = 0.
+	while (NVec.getR()==0.){
+	  Vector3d RandomVector = Random::instance().randVector();
+	  NVec = TVec.cross( RandomVector );
+	}
 	NVec = NVec.getUnitVector();
 
 	// Calculate the Binormal-vector
