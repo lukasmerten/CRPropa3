@@ -132,6 +132,7 @@ void DiffusionModule::process(Candidate *candidate) const {
 	bool NaN = std::isnan(PO.getR());
 	
 	if (NaN == true){
+	  std::cout << "Candidate with 'nan'-position occured: \n";
 	  std::cout << "position = " << PO << "\n";
 	  std::cout << "PosIn = " << PosIn << "\n";
 	  std::cout << "TVec = " << TVec << "\n";
@@ -140,7 +141,10 @@ void DiffusionModule::process(Candidate *candidate) const {
 	  std::cout << "NStep = " << NStep << "\n";
 	  std::cout << "BVec = " << BVec << "\n";
 	  std::cout << "BStep = " << BStep << "\n";
-	  std::terminate();
+	  candidate->setActive(false);
+	  std::cout << "Candidate is deactivated!\n";
+	  std::cout << "-------------------------\n";
+	  return;
 	}
 	
 	DirOut = (PO -PosIn).getUnitVector();
