@@ -316,7 +316,7 @@ if(detList.size()) {
   for (size_t i = 0; i < detList.size(); i++) {
     double distance = length - detList[i];
     if (distance < 0.) {
-      c->limitNextStep(distance);
+      c->limitNextStep(-distance);
     }
     if (distance >= 0. && distance < step){
       detected = true;
