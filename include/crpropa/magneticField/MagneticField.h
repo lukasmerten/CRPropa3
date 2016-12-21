@@ -3,6 +3,8 @@
 
 #include "crpropa/Vector3.h"
 #include "crpropa/Referenced.h"
+#include <cmath>
+#include "crpropa/Units.h"
 
 namespace crpropa {
 
@@ -79,6 +81,39 @@ public:
 		return value;
 	}
 };
+
+class ConstMagneticSpiral: public MagneticField {
+    double spiral;
+public:
+  ConstMagneticSpiral(const double &spiral) :
+    spiral(spiral){
+    }
+    Vector3d getField(const Vector3d &position) const {
+      double z_ = position.z;
+      double phi = 2.*M_PI/spiral*z_;
+      double Bx = .5*kpc*2*M_PI/spiral * (-std::sin(phi));
+      double By = .5*kpc*2*M_PI/spiral *  std::cos(phi);
+      double Bz = 1.;
+      return Vector3d(Bx, By, Bz);
+    }
+  };
+
+
+class ConeMagneticSpiral: public MagneticField {
+    double spiral;
+public:
+  ConeMagneticSpiral(const double &spiral) :
+    spiral(spiral){
+    }
+    Vector3d getField(const Vector3d &position) const {
+      double z_ = position.z;
+      double phi = 2*M_PI/spiral*z_;
+      double Bx = cos(phi) - 2*M_PI*z_/spiral * sin(phi);
+      double By = sin(phi) + 2*M_PI*z_/spiral * cos(phi);
+      double Bz = 1.;
+      return Vector3d(Bx, By, Bz);
+    }
+  };
 
 } // namespace crpropa
 
