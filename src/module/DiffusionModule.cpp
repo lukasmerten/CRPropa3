@@ -100,25 +100,31 @@ void DiffusionModule::process(Candidate *candidate) const {
 	Vector3d PosOut = Vector3d(0.);
 	Vector3d DirOut = Vector3d(0.);
 	Vector3d PosErr = Vector3d(0.);
+	Vector3d PosTest = Vector3d(0.);
 
 
 
 	do {
 	  hTry = h;
-	  double propStep =  TStep * pow(hTry, 0.5);
-	  //double propStep =  TStep * pow(hTry, 0.5) / c_light;
+	  //double propStep =  TStep * pow(hTry, 0.5);
+	  double propStep =  TStep * pow(hTry, 0.5) / c_light;
 
-	  tryStep(PosIn, PosOut, PosErr, TVec, NVec, BVec, z, propStep);
+	  tryStep(PosIn, PosOut, PosErr,PosTest, TVec, NVec, BVec, z, propStep);
 	  
 	  // calculate the relative position error r and the next time step h
-	  r = PosErr.getR() / std::abs(propStep) / tolerance;
+	  //r = PosErr.getR() / std::abs(propStep) / tolerance;
+	  r = PosErr.getR() / tolerance;
+	  //std::cout <<"hTry = " << hTry*c_light/kpc << "\n";
+	  //std::cout <<"r = " << r << "\n";
 	  //r = PosErr.getR() / tolerance;
 	  h *= 0.95 * pow(r, -0.2);
 	  // prevent h from too strong variations
 	  h = clip(h, 0.1 * hTry, 5 * hTry);
-	} while (r > 1 && hTry > minStep / c_light && TVec.getR()==TVec.getR());
+	  //std::cout <<"h = " << h*c_light/kpc << "\n";
+
+	} while (r > 1 && hTry >= minStep / c_light && TVec.getR()==TVec.getR());
 	
-	// Exception: Rectilinear propagation in case of veanishing magnetic field.
+	// Exception: Rectilinear propagation in case of vanishing magnetic field.
 	if (TVec.getR() != TVec.getR()) {
 	  Vector3d dir = current.getDirection();
 	  current.setPosition(current.getPosition() + dir * step);
@@ -127,12 +133,16 @@ void DiffusionModule::process(Candidate *candidate) const {
 	  return;
 	}
 	// Integration of the SDE with a Mayorama-Euler-method
-	Vector3d PO = PosIn + (TVec * std::abs(TStep) + NVec * NStep + BVec * BStep) * pow(hTry, 0.5);
-	
+	//Vector3d PO = PosIn + (TVec * std::abs(TStep) + NVec * NStep + BVec * BStep) * pow(hTry, 0.5);
+	Vector3d PO = PosOut + (NVec * NStep + BVec * BStep) * pow(hTry, 0.5) ;//* (TStep*pow(hTry, 0.5))/(PosIn -PosOut).getR() ;//PosOut;
+	//Vector3d PO = PosOut;
+	//std::cout <<"NStep = " << NStep * pow(hTry, 0.5) / kpc << "\n";
+	//std::cout <<"BStep = " << BStep * pow(hTry, 0.5) / kpc << "\n";
+
 	bool NaN = std::isnan(PO.getR());
 	
 	if (NaN == true){
-	  std::cout << "Candidate with 'nan'-position occured: \n";
+	  std::cout << "\nCandidate with 'nan'-position occured: \n";
 	  std::cout << "position = " << PO << "\n";
 	  std::cout << "PosIn = " << PosIn << "\n";
 	  std::cout << "TVec = " << TVec << "\n";
@@ -152,38 +162,74 @@ void DiffusionModule::process(Candidate *candidate) const {
 	current.setDirection(DirOut);
 	candidate->setCurrentStep(hTry * c_light);
 	candidate->setNextStep(h * c_light);
-	
+	std::stringstream s;
+	const std::string AL = "arcLength";
+	if (candidate->hasProperty(AL) == false){
+	  s << (TStep + NStep + BStep) * pow(hTry, 0.5);
+	  const std::string value = s.str();
+	  candidate->setProperty(AL, value);
+	  return;
+	}
+	else {
+	  std::string arcLenString;
+	  candidate->getProperty(AL, arcLenString);
+	  double arcLen = ::atof(arcLenString.c_str());
+	  arcLen += (TStep + NStep + BStep) * pow(hTry, 0.5);
+	  s << arcLen;
+	  const std::string value = s.str();
+	  candidate->setProperty(AL, value);
+	}
 
 }
 
 
-void DiffusionModule::tryStep(const Vector3d &PosIn, Vector3d &POut, Vector3d &PosErr, Vector3d &TVec,Vector3d &NVec,Vector3d &BVec,double z, double propStep) const {
+void DiffusionModule::tryStep(const Vector3d &PosIn, Vector3d &POut, Vector3d &PosErr,Vector3d &PosTest, Vector3d &TVec,Vector3d &NVec,Vector3d &BVec,double z, double propStep) const {
 
 	Vector3d k[] = {Vector3d(0.),Vector3d(0.),Vector3d(0.),Vector3d(0.),Vector3d(0.),Vector3d(0.)};
-	Vector3d Pos[] = {Vector3d(0.),Vector3d(0.),Vector3d(0.),Vector3d(0.),Vector3d(0.),Vector3d(0.)};
+	POut = PosIn;
+	PosTest = PosIn;
+
+	//calculate the sume k_i * b_i
 	for (size_t i = 0; i < 6; i++) {
+
 		Vector3d y_n = PosIn;
 		for (size_t j = 0; j < i; j++)
 		  y_n += k[j] * a[i * 6 + j] * propStep;
-		Pos[i] = y_n;
 		
 		// update k_i = direction of the regular magnetic mean field
 		Vector3d BField(0.);
 		try {
 		  BField = field->getField(y_n, z);
+		  //std::cout << "Bfield = " << BField << "\n";
 		} 
 		catch (std::exception &e) {
 		  std::cerr << "DiffusionModule: Exception in getField." << std::endl;
 		  std::cerr << e.what() << std::endl;
 		}
 		
-		k[i] = BField.getUnitVector();
+		k[i] = BField.getUnitVector() * c_light;
+		//k[i] = BField.getUnitVector();
+
 		POut += k[i] * b[i] * propStep;
-		PosErr +=  (k[i] * (b[i] - bs[i])) * fabs(propStep);
-			
+		PosTest += k[i] * bs[i] * propStep;
+		//std::cout <<"POut = " << POut/kpc << "\n";
+		//std::cout <<"PosTest = " << PosTest/kpc << "\n";
+
+		PosErr +=  (k[i] * (b[i] - bs[i])) / c_light;
+		//std::cout <<"PErr = " << PosErr.getR()/kpc << "\n";	
 	}
-	TVec = POut.getUnitVector();
-	
+	TVec = (POut-PosIn).getUnitVector();
+	/*
+	std::cout <<"PIn = " << PosIn/kpc << "\n";
+	std::cout <<"POut = " << POut/kpc << "\n";
+	std::cout <<"propStep = " << propStep * c_light / kpc << "\n";
+	std::cout <<"Distance = " << (POut-PosIn).getR() / kpc << "\n";
+	std::cout <<"DistanceVector = " << (POut-PosIn)/kpc << "\n";
+	std::cout <<"TVec = " << TVec << "\n";
+	*/
+	//std::cout <<"PosTest = " << (PosTest-PosIn)/kpc << "\n";
+	//std::cout <<"PErr = " << PosErr.getR()/kpc << "\n";	
+
 	// Choose a random perpendicular vector as the Normal-vector.
 	// Prevent 'nan's in the NVec-vector in the case of <TVec, NVec> = 0.
 	while (NVec.getR()==0.){
