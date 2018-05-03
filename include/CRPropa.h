@@ -34,6 +34,7 @@
 #include "crpropa/module/EMTripletPairProduction.h"
 #include "crpropa/module/ElasticScattering.h"
 #include "crpropa/module/ElectronPairProduction.h"
+#include "crpropa/module/FieldLineIntegrator.h"
 #include "crpropa/module/HDF5Output.h"
 #include "crpropa/module/NuclearDecay.h"
 #include "crpropa/module/Observer.h"
@@ -53,6 +54,7 @@
 
 #include "crpropa/magneticField/AMRMagneticField.h"
 #include "crpropa/magneticField/JF12Field.h"
+#include "crpropa/magneticField/JF12Field_improved.h"
 #include "crpropa/magneticField/MagneticField.h"
 #include "crpropa/magneticField/MagneticFieldGrid.h"
 #include "crpropa/magneticField/PT11Field.h"

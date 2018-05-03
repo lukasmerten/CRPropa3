@@ -304,6 +304,7 @@
 %include "crpropa/magneticField/QuimbyMagneticField.h"
 %include "crpropa/magneticField/AMRMagneticField.h"
 %include "crpropa/magneticField/JF12Field.h"
+%include "crpropa/magneticField/JF12Field_improved.h"
 %include "crpropa/magneticField/PT11Field.h"
 %include "crpropa/magneticField/ArchimedeanSpiralField.h"
 %include "crpropa/module/BreakCondition.h"
@@ -314,6 +315,7 @@
 %include "crpropa/module/Observer.h"
 %include "crpropa/module/SimplePropagation.h"
 %include "crpropa/module/PropagationCK.h"
+%include "crpropa/module/FieldLineIntegrator.h"
 
 %ignore crpropa::Output::enableProperty(const std::string &property, const Variant& defaultValue, const std::string &comment = "");
 %extend crpropa::Output{
