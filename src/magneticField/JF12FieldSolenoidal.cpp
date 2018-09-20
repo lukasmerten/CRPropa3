@@ -1,4 +1,4 @@
-#include "crpropa/magneticField/JF12Field_improved.h"
+#include "crpropa/magneticField/JF12FieldSolenoidal.h"
 #include "crpropa/Units.h"
 #include "crpropa/GridTools.h"
 #include "crpropa/Random.h"
@@ -7,27 +7,22 @@
 
 namespace crpropa {
 
-double JF12Field_improved::logisticFunction(double x, double x0, double w) const{
-	return 1. / (1. + exp(-2. * (fabs(x) - x0) / w));
-}
-
-JF12Field_improved::JF12Field_improved(bool usedisk, bool usetoroidalhalo, bool usex, double delta, double hx) {
+JF12FieldSolenoidal::JF12FieldSolenoidal(double delta, double zs) {
 	
 	useRegular = true;
 	useStriated = false;
 	useTurbulent = false;
 	
-	useDisk = usedisk;
-	useToroidalHalo = usetoroidalhalo;
-	useX = usex;
+	useDisk = true;
+	useToroidalHalo = true;
+	useX = true;
 	
 	// set widths and heigths of field and transition zones
-	Delta = delta;
-	hX = hx;
+	zS = zs;
 	r1 = 5 * kpc;
 	r2 = 20 * kpc;
-	r1s = r1 + Delta;
-	r2s = r2 - Delta;
+	r1s = r1 + delta;
+	r2s = r2 - delta;
 	
 	// set spiral arm parameters
 	pitch = 11.5 * M_PI / 180;
@@ -46,8 +41,7 @@ JF12Field_improved::JF12Field_improved(bool usedisk, bool usetoroidalhalo, bool 
 	rArms[6] = 12.7 * kpc;
 	rArms[7] = 15.5 * kpc;
 	
-	
-	// set angles of seperating spiral field lines at r1, see paper
+	// set angles of seperating spiral field lines at r1
 	phi0 = 0;
 	
 	for (int i = 1;i < 9; i++){
@@ -90,7 +84,6 @@ JF12Field_improved::JF12Field_improved(bool usedisk, bool usetoroidalhalo, bool 
 	bDisk[10] = bDisk[2];
 	
 	// set coefficients for phi integration
-	
 	phiCoeff[0] = 0;
 	for (int i = 1; i < 10; i++){
 		phiCoeff[i] = phiCoeff[i-1] + (bDisk[i-1] - bDisk[i]) * phi0Arms[i-1];
@@ -112,11 +105,11 @@ JF12Field_improved::JF12Field_improved(bool usedisk, bool usetoroidalhalo, bool 
 	
 	// X-field parameters
 	bX = 4.6 * muG;
-	thetaX0 = 49.0 * M_PI / 180;
+	thetaX0 = 49.0 * M_PI / 180.;
 	sinThetaX0 = sin(thetaX0);
 	cosThetaX0 = cos(thetaX0);
 	tanThetaX0 = tan(thetaX0);
-	cotThetaX0 = 1. / tan(thetaX0);
+	cotThetaX0 = 1. / tanThetaX0;
 	rXc = 4.8 * kpc;
 	rX = 2.9 * kpc;
 
@@ -139,32 +132,9 @@ JF12Field_improved::JF12Field_improved(bool usedisk, bool usetoroidalhalo, bool 
 	bHaloTurb = 4.68 * muG; 
 	rHaloTurb = 10.97 * kpc;
 	zHaloTurb = 2.84 * kpc;
-	
-	
-	//debugging output
-	//~ std::cout << "phi0Arms:\n";
-	//~ for (int i = 0; i < 11; i++){
-		//~ std::cout << "Phi[" << i << "] = " << phi0Arms[i] << " rad \n";
-	//~ }
-	//~ 
-	//~ std::cout << "Index of phi0 is: " << idx0 << "\n";
-	//~ 
-	//~ std::cout << "bDisk:\n";
-	//~ for (int i = 0; i < 11; i++){
-		//~ std::cout << "bDisk[" << i << "] = " << bDisk[i]/muG << " muG \n";
-	//~ }
-	//~ 
-	//~ std::cout << "corr = " << corr/muG << " muG\n";
-	//~ 
-	//~ std::cout << "phiCoeff:\n";
-	//~ for (int i = 0; i < 10; i++){
-		//~ std::cout << "phiCoeff[" << i << "] = " << phiCoeff[i]/muG << " muG \n";
-	//~ }
-	
-	
 }
 
-void JF12Field_improved::randomStriated(int seed) {
+void JF12FieldSolenoidal::randomStriated(int seed) {
 	useStriated = true;
 	int N = 100;
 	striatedGrid = new ScalarGrid(Vector3d(0.), N, 0.1 * kpc);
@@ -182,7 +152,7 @@ void JF12Field_improved::randomStriated(int seed) {
 }
 
 #ifdef CRPROPA_HAVE_FFTW3F
-void JF12Field_improved::randomTurbulent(int seed) {
+void JF12FieldSolenoidal::randomTurbulent(int seed) {
 	useTurbulent = true;
 	// turbulent field with Kolmogorov spectrum, B_rms = 1 and Lc = 60 parsec
 	turbulentGrid = new VectorGrid(Vector3d(0.), 256, 4 * parsec);
@@ -190,57 +160,73 @@ void JF12Field_improved::randomTurbulent(int seed) {
 }
 #endif
 
-void JF12Field_improved::setStriatedGrid(ref_ptr<ScalarGrid> grid) {
+void JF12FieldSolenoidal::setStriatedGrid(ref_ptr<ScalarGrid> grid) {
 	useStriated = true;
 	striatedGrid = grid;
 }
 
-void JF12Field_improved::setTurbulentGrid(ref_ptr<VectorGrid> grid) {
+void JF12FieldSolenoidal::setTurbulentGrid(ref_ptr<VectorGrid> grid) {
 	useTurbulent = true;
 	turbulentGrid = grid;
 }
 
-ref_ptr<ScalarGrid> JF12Field_improved::getStriatedGrid() {
+ref_ptr<ScalarGrid> JF12FieldSolenoidal::getStriatedGrid() {
 	return striatedGrid;
 }
 
-ref_ptr<VectorGrid> JF12Field_improved::getTurbulentGrid() {
+ref_ptr<VectorGrid> JF12FieldSolenoidal::getTurbulentGrid() {
 	return turbulentGrid;
 }
 
-void JF12Field_improved::setUseRegular(bool use) {
+void JF12FieldSolenoidal::setUseRegular(bool use) {
 	useRegular = use;
 }
 
-void JF12Field_improved::setUseStriated(bool use) {
+void JF12FieldSolenoidal::setUseDisk(bool use) {
+	useDisk = use;
+}
+
+void JF12FieldSolenoidal::setUseToroidalHalo(bool use) {
+	useToroidalHalo = use;
+}
+
+void JF12FieldSolenoidal::setUseX(bool use) {
+	useX = use;
+}
+
+void JF12FieldSolenoidal::setUseStriated(bool use) {
 	if ((use) and (striatedGrid)) {
-		std::cout << "JF12Field_improved: No striated field set: ignored" << std::endl;
+		std::cout << "JF12FieldSolenoidal: No striated field set: ignored" << std::endl;
 		return;
 	}
 	useStriated = use;
 }
 
-void JF12Field_improved::setUseTurbulent(bool use) {
+void JF12FieldSolenoidal::setUseTurbulent(bool use) {
 	if ((use) and (turbulentGrid)) {
-		std::cout << "JF12Field_improved: No turbulent field set: ignored" << std::endl;
+		std::cout << "JF12FieldSolenoidal: No turbulent field set: ignored" << std::endl;
 		return;
 	}
 	useTurbulent = use;
 }
 
-bool JF12Field_improved::isUsingRegular() {
+bool JF12FieldSolenoidal::isUsingRegular() {
 	return useRegular;
 }
 
-bool JF12Field_improved::isUsingStriated() {
+bool JF12FieldSolenoidal::isUsingStriated() {
 	return useStriated;
 }
 
-bool JF12Field_improved::isUsingTurbulent() {
+bool JF12FieldSolenoidal::isUsingTurbulent() {
 	return useTurbulent;
 }
 
-Vector3d JF12Field_improved::getRegularField(const Vector3d& pos) const {
+double JF12FieldSolenoidal::logisticFunction(const double x, const double x0, const double w) const {
+	return 1. / (1. + exp(-2. * (fabs(x) - x0) / w));
+}
+
+Vector3d JF12FieldSolenoidal::getRegularField(const Vector3d& pos) const {
 	Vector3d b(0.);
 
 	double r = sqrt(pos.x * pos.x + pos.y * pos.y); // in-plane radius
@@ -250,34 +236,21 @@ Vector3d JF12Field_improved::getRegularField(const Vector3d& pos) const {
 	double sinPhi = sin(phi);
 	double cosPhi = cos(phi);
 	
-	////////////////////////////////////////////////////////////////
-	
-	// disk field
 	b += getDiskField(r, pos.z, phi, sinPhi, cosPhi);
-	
-	
-	////////////////////////////////////////////////////////////////
-	
-	// toroidal halo field
 	b += getToroidalHaloField(r, pos.z, sinPhi, cosPhi);
-	
-	////////////////////////////////////////////////////////////////
-	
-	// poloidal halo field
-	
 	b += getXField(r, pos.z, sinPhi, cosPhi);
-	
-	////////////////////////////////////////////////////////////////
 
 	return b;
 }
 
-Vector3d JF12Field_improved::getStriatedField(const Vector3d& pos) const {
+Vector3d JF12FieldSolenoidal::getStriatedField(const Vector3d& pos) const {
 	return (getRegularField(pos)
 			* (1. + sqrtbeta * striatedGrid->closestValue(pos)));
 }
 
-double JF12Field_improved::getTurbulentStrength(const Vector3d& pos) const {
+double JF12FieldSolenoidal::getTurbulentStrength(const Vector3d& pos) const {
+	// Turbulent JF12 field WITHOUT any alterations as of yet! Be careful when using this.
+	
 	if (pos.getR() > 20 * kpc)
 		return 0;
 
@@ -312,11 +285,11 @@ double JF12Field_improved::getTurbulentStrength(const Vector3d& pos) const {
 	return sqrt(bDisk * bDisk + bHalo * bHalo);
 }
 
-Vector3d JF12Field_improved::getTurbulentField(const Vector3d& pos) const {
+Vector3d JF12FieldSolenoidal::getTurbulentField(const Vector3d& pos) const {
 	return (turbulentGrid->interpolate(pos) * getTurbulentStrength(pos));
 }
 
-Vector3d JF12Field_improved::getField(const Vector3d& pos) const {
+Vector3d JF12FieldSolenoidal::getField(const Vector3d& pos) const {
 	Vector3d b(0.);
 	if (useTurbulent)
 		b += getTurbulentField(pos);
@@ -327,16 +300,11 @@ Vector3d JF12Field_improved::getField(const Vector3d& pos) const {
 	return b;
 }
 
-//improved disk field with transition to ring region, delta1 and delta2 are the transition widths
-Vector3d JF12Field_improved::getDiskField(const double r, const double z, const double phi, const double sinPhi, const double cosPhi) const {
-	
+Vector3d JF12FieldSolenoidal::getDiskField(const double r, const double z, const double phi, const double sinPhi, const double cosPhi) const {
+	// improved disk field with transition to ring region
 	Vector3d b(0.);
 
-	if (!useDisk){
-		return b;
-	}
-	
-	else {
+	if (useDisk){
 		
 		double lfDisk = logisticFunction(z, hDisk, wDisk);
 		
@@ -355,25 +323,16 @@ Vector3d JF12Field_improved::getDiskField(const double r, const double z, const 
 			
 			b *= (1 - lfDisk);
 		}
-		
-		return b;
-	}		
+	}
+	
+	return b;		
 }
 
-//same as initial JF12, moved in a seperate function for clearness
-Vector3d JF12Field_improved::getToroidalHaloField(const double r, const double z, const double sinPhi, const double cosPhi) const {
-	
+Vector3d JF12FieldSolenoidal::getToroidalHaloField(const double r, const double z, const double sinPhi, const double cosPhi) const {
+	// same as initial JF12, moved in a seperate function for clearness
 	Vector3d b(0.);
 	
-	if (!useToroidalHalo){
-		return b;
-	}
-	
-	if ((r*r + z * z <=1 * kpc) || (r*r + z * z >= 400 * kpc * kpc)){
-		return b;
-	}
-	
-	else{
+	if (useToroidalHalo && (r * r + z * z > 1 * kpc) && (r * r + z * z < 400 * kpc * kpc)){
 		
 		double lfDisk = logisticFunction(z, hDisk, wDisk);
 		double bMagH = exp(-fabs(z) / z0) * lfDisk;
@@ -384,36 +343,33 @@ Vector3d JF12Field_improved::getToroidalHaloField(const double r, const double z
 			bMagH *= bSouth * (1 - logisticFunction(r, rSouth, wHalo));
 		b.x += -bMagH * sinPhi;
 		b.y += bMagH * cosPhi;
-		return b;
 	}
+	
+	return b;
 }
 
-//improved X-field with parabolic field lines at abs(z) < hX
-Vector3d JF12Field_improved::getXField(const double r, const double z, const double sinPhi, const double cosPhi) const {
-	
+Vector3d JF12FieldSolenoidal::getXField(const double r, const double z, const double sinPhi, const double cosPhi) const {
+	// improved X-field with parabolic field lines at abs(z) < zs
 	
 	Vector3d b(0.);
 	
-	if (!useX || (r * r + z * z >= 400 * kpc * kpc)){
-		return b;
-	}
-	
-	if (r == 0){
-		b.z = bX / ((1 + abs(z) * cotThetaX0 / rXc) * (1 + abs(z) * cotThetaX0 / rXc));
-	}
-	
-	else{
+	if (useX && (r * r + z * z < 400. * kpc * kpc)){
 		
 		double bMagX;
 		double sinThetaX, cosThetaX;
-		double rp; //radius where current intial field line passes z = 0
+		double rp; // radius where current intial field line passes z = 0
 		double rc = rXc + fabs(z) / tanThetaX0; 
-		double r0c = rXc + hX / tanThetaX0; //radius where field line through rXc passes z = hX
+		double r0c = rXc + zS / tanThetaX0; // radius where field line through rXc passes z = zS
 		double f, r0, br0, bz0;
-		bool inner = true;//distinguish between inner and outer region
+		bool inner = true; // distinguish between inner and outer region
 		
-		// return intial field if z>=hX
-		if (fabs(z) >= hX){
+		// return intial field if z>=zS
+		if (fabs(z) > zS){
+			
+			if ((r == 0.)){
+				b.z = bX / ((1. + fabs(z) * cotThetaX0 / rXc) * (1. + fabs(z) * cotThetaX0 / rXc));
+				return b;
+			}
 			
 			if (r < rc) {	
 			// inner varying elevation region
@@ -434,12 +390,9 @@ Vector3d JF12Field_improved::getXField(const double r, const double z, const dou
 				b.x += zsign * bMagX * cosThetaX * cosPhi;
 				b.y += zsign * bMagX * cosThetaX * sinPhi;
 				b.z += bMagX * sinThetaX;
-
-				return b;
 			}
-			
 			else {
-			//outer constant elevation region
+			// outer constant elevation region
 				rp = r - fabs(z) / tanThetaX0;
 				bMagX = bX * exp(-rp / rX) * (rp / r);
 				
@@ -450,74 +403,70 @@ Vector3d JF12Field_improved::getXField(const double r, const double z, const dou
 				b.x += zsign * bMagX * cosThetaX * cosPhi;
 				b.y += zsign * bMagX * cosThetaX * sinPhi;
 				b.z += bMagX * sinThetaX;
-				
-				return b;
 			}
 		}
-		//parabolic field lines for z<hX
+		// parabolic field lines for z<zS
 		else {
-				//determine r at which parabolic field line through (r,z) passes z = hX
-				r0 = r * 1. / (1.- 1./ (2. * (hX + rXc * tanThetaX0)) * (hX - z * z / hX));
+				// determine r at which parabolic field line through (r,z) passes z = zS
+				r0 = r * 1. / (1.- 1./ (2. * (zS + rXc * tanThetaX0)) * (zS - z * z / zS));
 				
-				//determine correct region (inner/outer)
+				// determine correct region (inner/outer)
 				if (r0 >= r0c){
-					r0 = r + 1. / (2. * tanThetaX0) * (hX - z * z / hX);
+					r0 = r + 1. / (2. * tanThetaX0) * (zS - z * z / zS);
 					inner = false;
 				}
 				
-				//field strength at that position
+				// field strength at that position
 				 if (r0 < r0c){
 					 
 					 rp = r0 * rXc / r0c;
-					 double thetaX = atan(hX / (r0 - rp));
+					 double thetaX = atan(zS / (r0 - rp));
 					 
-					 //field strength at (r0,hX) for inner region
+					 // field strength at (r0,zS) for inner region
 					 br0 = bX * exp(- rp / rX) * (rXc/ r0c) * (rXc/ r0c) * cos(thetaX);
 					 bz0 = bX * exp(- rp / rX) * (rXc/ r0c) * (rXc/ r0c) * sin(thetaX);
 				 }
 				 else {
 					 
-					 //field strength at (r0,hX) for outer region
-					 rp = r0 - hX / tanThetaX0;
+					 // field strength at (r0,zS) for outer region
+					 rp = r0 - zS / tanThetaX0;
 					 br0 =  bX * exp(- rp / rX) * (rp/r0) * cosThetaX0;
 					 bz0 =  bX * exp(- rp / rX) * (rp/r0) * sinThetaX0;
 					 
 				 }
 				 
-				 //compute factor F for solenoidality
+				 // compute factor F for solenoidality
 				 if (inner){
-					 f = 1. / ((1. - 1./( 2. + 2. * (rXc * tanThetaX0/ hX)) * (1. - (z / hX) * (z / hX))) * (1. - 1./( 2. + 2. * (rXc * tanThetaX0/ hX)) * (1. - (z / hX) * (z / hX))));
+					 f = 1. / ((1. - 1./( 2. + 2. * (rXc * tanThetaX0/ zS)) * (1. - (z / zS) * (z / zS))) * (1. - 1./( 2. + 2. * (rXc * tanThetaX0/ zS)) * (1. - (z / zS) * (z / zS))));
 				 }
 				 else{
-					 f = 1. + 1/ (2 * r * tanThetaX0/ hX) * (1. - (z / hX) * (z / hX)); 
+					 f = 1. + 1/ (2 * r * tanThetaX0/ zS) * (1. - (z / zS) * (z / zS)); 
 				 }
 				 
-				 
-				 double br = z / hX * f * br0;
+				 double br = z / zS * f * br0;
 				 double bz = bz0 * f;
 				 
 				 b.x += br * cosPhi;
 				 b.y += br * sinPhi;
 				 b.z += bz;
-				 
-				 return b;
 		}
 	}
+	return b;
 }
 
-//transition polynomial p_delta(r)
-double JF12Field_improved::p(const double r) const {
+double JF12FieldSolenoidal::p(const double r) const {
+	//transition polynomial p_delta(r)
 	
-	//0 disk field outside
+	// 0 disk field outside
 	if ((r < r1) || (r > r2)) {
 		return 0.;
 	}	
-	//unchanged field
+	// unchanged field
 	if ((r > r1s) && (r < r2s)) {
 		return r1/r;
 	}
 	
-	//transitions region parameters
+	// transitions region parameters
 	double r_a = r1;
 	double r_s = r1s;
 	
@@ -526,23 +475,24 @@ double JF12Field_improved::p(const double r) const {
 		r_s = r2s;
 	}
 	
+	// differentiable transition at r_s, continous at r_a
 	double fakt = (r_a / r_s - 2.) / ((r_a - r_s) *  (r_a - r_s));
 	return (r1/r_s) * (2. - r / r_s + fakt * (r-r_s) * (r-r_s));
 }	
 
-//transition polynomial derivative
-double JF12Field_improved::q(const double r) const {
+double JF12FieldSolenoidal::q(const double r) const {
+	//transition polynomial derivative
 	
-	//0 disk field outside
+	// 0 disk field outside
 	if ((r < r1) || (r > r2)) {
 		return 0.;
 	}	
-	//unchanged field
+	// unchanged field
 	if ((r > r1s) && (r < r2s)) {
 		return 0.;
 	}
 	
-	//transitions region parameters
+	// transitions region parameters
 	double r_a = r1;
 	double r_s = r1s;
 	
@@ -551,13 +501,13 @@ double JF12Field_improved::q(const double r) const {
 		r_s = r2s;
 	}
 	
+	// differentiable transition at r_s, continous at r_a
 	double fakt = (r_a / r_s - 2.) / ((r_a - r_s) * (r_a - r_s));
 	return (r1/r_s) * (2. - 2. * r/r_s + fakt * (3. * r * r - 4. * r * r_s + r_s * r_s));
 }
 
-//evaluate BphiIntegral 
-double JF12Field_improved::PhiIntegralH(const double r, const double phi) const {
-	
+double JF12FieldSolenoidal::PhiIntegralH(const double r, const double phi) const {
+	// evaluate BphiIntegral for solenodality
 	double H_ret = 0.;
 	int idx = 1;
 	
@@ -574,9 +524,8 @@ double JF12Field_improved::PhiIntegralH(const double r, const double phi) const 
 	
 }
 
-//return correct field strength b_j in spiral arm
-double JF12Field_improved::getSpiralStrength(const double r, const double phi) const {
-	
+double JF12FieldSolenoidal::getSpiralStrength(const double r, const double phi) const {
+	// return correct field strength b_j in spiral arm
 	double b_ret = 0.;
 	int idx = 1;
 	

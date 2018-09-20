@@ -1,5 +1,5 @@
-#ifndef CRPROPA_JF12FIELD_IMPROVED_H
-#define CRPROPA_JF12FIELD_IMPROVED_H
+#ifndef CRPROPA_JF12FIELDSOLENOIDAL_H
+#define CRPROPA_JF12FIELDSOLENOIDAL_H
 
 #include "crpropa/magneticField/MagneticField.h"
 #include "crpropa/Grid.h"
@@ -8,29 +8,23 @@
 namespace crpropa {
 
 /**
- @class JF12Field_improved
- @brief JF12Field_improved galactic magnetic field model
-
- Implements the JF2012 magnetic field model, consisting of a large-scale regular
- and random (striated) field and a small-scale random (turbulent) field.
- See:
- Jansson 2012a, ApJ. 757, A New Model of the Galactic Magnetic Field
- Jansson 2012b, arXiv:1210.7820, The Galactic Magnetic Field
-
- All three components may individually turned on and off.
- Currently only best fit values of the field paramaters are implemented and
- cannot be changed.
-
- The field is defined in the usual galactocentric coordinate system with the
- Galactic center at the origin, the x-axis pointing in the opposite direction of
- the Sun, and the z-axis pointing towards Galactic north.
+ @class JF12FieldSolenoidal
+ @brief JF12FieldSolenoidal galactic magnetic field model
+ 
+ Implements a modified JF2012 magnetic field model, see documentation of JF12Field for basics.
  
  A solenoidal ring-spiral transition and a smooth X-field at z = 0
- according to Kleimann et al. were added.
+ according to Kleimann et al. (2018) were added, see arXiv...
  
+ The regular field components (disk, toroidal halo and polodial halo field) 
+ may be turned on and off individually for tests.
+ 
+ The turbulent field component is the exact same as in the initial JF12 implementation
+ and should be used with care since the new regular and old turbulent field
+ do not match in the ring-spiral transition region.
  */
  
-class JF12Field_improved: public MagneticField {
+class JF12FieldSolenoidal: public MagneticField {
 private:
 
 	//allow for enabling and disabling of the individual components
@@ -42,11 +36,8 @@ private:
 	bool useToroidalHalo;
 	bool useX;
 	
-	//transition widths of the spiral field
-	double Delta;
-	
 	//height paramter of the modified X-field
-	double hX;
+	double zS;
 	
 	// disk spiral arms
 	double rArms[8]; // radii where each arm crosses the negative x-axis
@@ -63,11 +54,11 @@ private:
 	double phiCoeff[10]; //for phi0Arms[j-1] < phi < phi0Arms[j], hence only 10
 	double corr; // correction term enforcing H(phi0) = 0
 	
-	//inner and outer boundaries disk field
+	//inner and outer boundaries  of disk field
 	double r1; 
 	double r2;
 	
-	//transitions region boundaries disk field
+	//transitions region boundaries of disk field
 	double r1s;
 	double r2s;
 	
@@ -107,7 +98,7 @@ private:
 
 public:
 
-	JF12Field_improved(bool usedisk=true, bool usetoroidalhalo=true, bool usex=true, double delta=(3*kpc), double hx=(500*pc));
+	JF12FieldSolenoidal(double delta=(3*kpc), double zs=(0.5*kpc));
 
 	// Create and set a random realization for the striated field
 	void randomStriated(int seed = 0);
@@ -135,10 +126,15 @@ public:
 	void setUseRegular(bool use);
 	void setUseStriated(bool use);
 	void setUseTurbulent(bool use);
+	void setUseDisk(bool use);
+	void setUseToroidalHalo(bool use);
+	void setUseX(bool use);
 
 	bool isUsingRegular();
 	bool isUsingStriated();
 	bool isUsingTurbulent();
+	
+	double logisticFunction(const double x, const double x0, const double w) const;
 
 	// Regular field component
 	Vector3d getRegularField(const Vector3d& pos) const;
@@ -152,15 +148,12 @@ public:
 	// Turbulent field component
 	Vector3d getTurbulentField(const Vector3d& pos) const;
 
-	// All set field components
+	// All get field components
 	Vector3d getField(const Vector3d& pos) const;
 	
 	Vector3d getXField(const double r, const double z, const double sinPhi, const double cosPhi) const;
 	Vector3d getDiskField(const double r, const double z, const double phi, const double sinPhi, const double cosPhi) const;
 	Vector3d getToroidalHaloField(const double r, const double z, const double sinPhi, const double cosPhi) const;
-	
-	//spiral field functions
-	double logisticFunction(double x, double x0, double w) const;
 	
 	//transition polynomial p_delta(r)
 	double p(const double r) const;
@@ -178,4 +171,4 @@ public:
 
 } // namespace crpropa
 
-#endif // CRPROPA_JF12Field_improved_H
+#endif // CRPROPA_JF12FIELDSOLENOIDAL_H
