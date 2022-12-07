@@ -34,7 +34,6 @@ private:
 		std::vector<double> intensity; // probabilities of ensuing gamma decays
 	};
 	std::vector<std::vector<DecayMode> > decayTable; // decayTable[Z * 31 + N] = vector<DecayMode>
-	std::string interactionTag = "ND";
 
 public:
 	/** Constructor.
@@ -44,13 +43,20 @@ public:
 	 @param limit			step size limit as fraction of mean free path
 	 */
 	NuclearDecay(bool electrons = false, bool photons = false, bool neutrinos = false, double limit = 0.1);
-	void setLimit(double limit);
-	void setHaveElectrons(bool b);
-	void setHavePhotons(bool b);
-	void setHaveNeutrinos(bool b);
 
-	void setInteractionTag(std::string tag);
-	std::string getInteractionTag() const;
+	/** Limit the propagation step to a fraction of the mean free path
+	 * @param limit fraction of the mean free path
+	 */
+	void setLimit(double limit);
+
+	// decide if secondary electrons are added to the simulation	
+	void setHaveElectrons(bool b);
+
+	// decide if secondary photons are added to the simulation	
+	void setHavePhotons(bool b);
+
+	// decide if secondary neutrinos are added to the simulation	
+	void setHaveNeutrinos(bool b);
 
 	void process(Candidate *candidate) const;
 	void performInteraction(Candidate *candidate, int channel) const;

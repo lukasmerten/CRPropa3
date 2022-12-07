@@ -22,7 +22,6 @@ private:
 	ref_ptr<PhotonField> photonField;
 	double limit; // fraction of mean free path for limiting the next step
 	bool havePhotons;
-	std::string interactionTag = "PD";
 
 	struct Branch {
 		int channel; // number of emitted (n, p, H2, H3, He3, He4)
@@ -50,12 +49,16 @@ public:
 	 */
 	PhotoDisintegration(ref_ptr<PhotonField> photonField, bool havePhotons = false, double limit = 0.1);
 
+	// set the target photon field
 	void setPhotonField(ref_ptr<PhotonField> photonField);
+	
+	// decide if secondary photons are added to the simulation
 	void setHavePhotons(bool havePhotons);
+	
+	/** Limit the propagation step to a fraction of the mean free path
+	 * @param limit fraction of the mean free path
+	 */
 	void setLimit(double limit);
-
-	void setInteractionTag(std::string tag);
-	std::string getInteractionTag() const;
 
 	void initRate(std::string filename);
 	void initBranching(std::string filename);

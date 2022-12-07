@@ -30,7 +30,6 @@ private:
 	bool haveElectrons;
 	double limit;
 	double thinning;
-	std::string interactionTag = "EMTP";
 
 	// tabulated interaction rate 1/lambda(E)
 	std::vector<double> tabEnergy;  //!< electron energy in [J]
@@ -50,14 +49,22 @@ public:
 	 */
 	EMTripletPairProduction(ref_ptr<PhotonField> photonField, bool haveElectrons = false, double thinning = 0, double limit = 0.1);
 
+	// set the target photon field
 	void setPhotonField(ref_ptr<PhotonField> photonField);
+
+	// decide if secondary electrons are added to the simulation	
 	void setHaveElectrons(bool haveElectrons);
+
+	/** limit the step to a fraction of the mean free path
+	 @param limit	fraction of the mean free path, should be between 0 and 1
+	*/
 	void setLimit(double limit);
+
+	/** Apply thinning with a given thinning factor
+	 * @param thinning factor of thinning (0: no thinning, 1: maximum thinning)
+	 */
 	void setThinning(double thinning);
 
-	void setInteractionTag(std::string tag);
-	std::string getInteractionTag() const;
-	
 	void initRate(std::string filename);
 	void initCumulativeRate(std::string filename);
 

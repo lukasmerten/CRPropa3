@@ -30,7 +30,6 @@ private:
 	bool haveElectrons;
 	double limit;
 	double thinning;
-	std::string interactionTag = "EMDP";
 
 	// tabulated interaction rate 1/lambda(E)
 	std::vector<double> tabEnergy;  //!< electron energy in [J]
@@ -45,13 +44,21 @@ public:
 	 */
 	EMDoublePairProduction(ref_ptr<PhotonField> photonField, bool haveElectrons = false, double thinning = 0, double limit = 0.1);
 
+	// set the target photon field
 	void setPhotonField(ref_ptr<PhotonField> photonField);
+
+	// decide if secondary electrons are added to the simulation
 	void setHaveElectrons(bool haveElectrons);
-	void setLimit(double limit);
-	void setThinning(double thinning);
 	
-	void setInteractionTag(std::string tag);
-	std::string getInteractionTag() const;
+	/** Limit the propagation step to a fraction of the mean free path
+	 * @param limit fraction of the mean free path
+	 */
+	void setLimit(double limit);
+
+	/** Apply thinning with a given thinning factor
+	 * @param thinning factor of thinning (0: no thinning, 1: maximum thinning)
+	 */
+	void setThinning(double thinning);
 
 	void initRate(std::string filename);
 	void process(Candidate *candidate) const;
