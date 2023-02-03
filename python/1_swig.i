@@ -95,6 +95,8 @@ class StopIterator {};
 /* Include numpy array interface, if available */
   #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
   #include "numpy/arrayobject.h"
+  #include "numpy/npy_common.h"
+  #include "numpy/ndarrayobject.h"
   #include "numpy/ufuncobject.h"
 %}
 #endif
