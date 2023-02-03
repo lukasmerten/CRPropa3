@@ -38,6 +38,26 @@
 %template(LenspartVector) std::vector< crpropa::LensPart *>;
 
 #ifdef WITHNUMPY
+%{
+/* Include numpy array interface, if available */
+  #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+  #include "numpy/arrayobject.h"
+  #include "numpy/npy_common.h"
+  #include "numpy/ndarrayobject.h"
+  #include "numpy/ufuncobject.h"
+%}
+
+%init %{
+import_array();
+import_ufunc();
+%}
+
+%pythoncode %{
+import numpy
+__WITHNUMPY = True
+%}
+
+
 %extend crpropa::MagneticLens{
   PyObject * transformModelVector_numpyArray(PyObject *input, double rigidity)
   {
@@ -183,20 +203,25 @@
 
   PyObject *getParticleIds_numpyArray()
   {
-      std::vector<int> v = $self->getParticleIds();
-      npy_intp size = v.size();
-      PyObject *out = PyArray_SimpleNew(1, &size, NPY_INT);
-      memcpy(PyArray_DATA((PyArrayObject *) out), &v[0], v.size() * sizeof(int));
+      std::vector<int> v;// = $self->getParticleIds();
+      v = {1, 1, 1};
+      std::cout << &v <<"\n";
+      std::cout << v[0] <<"\n";
+      npy_intp shape[1];
+      shape[0] = 3;
+      PyObject *out;
+      out =  PyArray_SimpleNewFromData(1, shape, NPY_INT, &v);
       return out;
   }
 
-  PyObject *getEnergies_numpyArray(const int pid)
-  {
-      std::vector<double> v = $self->getEnergies(pid);
-      npy_intp size = v.size();
-      PyObject *out = PyArray_SimpleNew(1, &size, NPY_DOUBLE);
-      memcpy(PyArray_DATA((PyArrayObject *) out), &v[0], v.size() * sizeof(double));
-      return out;
+  PyObject* getEnergies_numpyArray(const int pid)
+  { 
+    std::vector<double> v = $self->getEnergies(pid);
+    npy_intp size = v.size();
+    PyObject *out;
+    out =  PyArray_SimpleNewFromData(1, &size, NPY_DOUBLE, &v);
+    memcpy(PyArray_DATA((PyArrayObject *) out), &v[0], v.size() * sizeof(double));
+    return out;
   }
 
   PyObject *getRandomParticles_numpyArray(size_t N)
