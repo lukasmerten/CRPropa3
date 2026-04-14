@@ -772,6 +772,24 @@ public:
 	void setDescription();
 };
 
+/**
+ @class SourceRedshift2ComovingDistance1D
+ @brief Source position according to redshift
+ 
+ This property sets the source position according to the redshift
+ of the candidate. It assumes that the origin is at (0,0,0).
+ It must be added after the candidate's redshift has been set.
+ */
+
+ class SourceRedshift2ComovingDistance1D: public SourceFeature {
+ public:
+	/**Constructor
+	 */
+	SourceRedshift2ComovingDistance1D();
+	void prepareCandidate(Candidate &candidate) const;
+	void setDescription();
+ };
+
 
 #ifdef CRPROPA_HAVE_MUPARSER
 /**

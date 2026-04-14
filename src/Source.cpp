@@ -942,6 +942,23 @@ void SourceRedshift1D::setDescription() {
 }
 
 // ----------------------------------------------------------------------------
+SourceRedshift2ComovingDistance1D::SourceRedshift2ComovingDistance1D() {
+	setDescription();
+}
+
+void SourceRedshift2ComovingDistance1D::prepareCandidate(Candidate& candidate) const {
+	double z = candidate.getRedshift();
+	double d = redshift2ComovingDistance(z);
+	candidate.current.setPosition(Vector3d(d, 0, 0));
+	candidate.source.setPosition(Vector3d(d, 0, 0));
+}
+
+void SourceRedshift2ComovingDistance1D::setDescription() {
+	description = "SourceRedshift2ComovingDistance1D: Source distance according to redshift\n";
+}
+
+
+// ----------------------------------------------------------------------------
 #ifdef CRPROPA_HAVE_MUPARSER
 SourceGenericComposition::SourceGenericComposition(double Emin, double Emax, std::string expression, size_t bins) :
 	Emin(Emin), Emax(Emax), expression(expression), bins(bins) {
